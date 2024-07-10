@@ -2,8 +2,12 @@ const express = require('express');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 const connectDB = require('./src/configs/db');
+const errorHandlerMiddleware = require('./src/middlewares/errorHandlerMiddleware');
 
+const AuthRouter = require('./src/routes/authRouter');
+const UsersRouter = require('./src/routes/userRouter');
 //dotenv config
 dotenv.config();
 
@@ -12,19 +16,23 @@ connectDB();
 
 //init express
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 //middlewares
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
-
-//PORT
-const PORT = process.env.PORT || 3000;
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(errorHandlerMiddleware);
 
 //routes
 app.get('/', (req, res) => {
     res.send('Server is ready!!');
 });
+
+app.use(`/api/v1/users`, UsersRouter);
+app.use(`/api/v1/auth`, AuthRouter);
 
 //listen
 app.listen(PORT, () => {
