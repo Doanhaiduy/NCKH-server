@@ -8,6 +8,7 @@ const errorHandlerMiddleware = require('./src/middlewares/errorHandlerMiddleware
 
 const AuthRouter = require('./src/routes/authRouter');
 const UsersRouter = require('./src/routes/userRouter');
+const PostRouter = require('./src/routes/postRouter');
 //dotenv config
 dotenv.config();
 
@@ -31,8 +32,9 @@ app.get('/', (req, res) => {
     res.send('Server is ready!!');
 });
 
-app.use(`/api/v1/users`, UsersRouter);
 app.use(`/api/v1/auth`, AuthRouter);
+app.use(`/api/v1/users`, UsersRouter);
+app.use(`/api/v1/posts`, PostRouter);
 
 //listen
 app.listen(PORT, () => {

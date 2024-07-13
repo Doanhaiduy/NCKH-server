@@ -1,5 +1,5 @@
 const UserModel = require('../models/userModel');
-const { uploadImage } = require('../utils/storage');
+const { uploadImage } = require('../utils');
 const asyncHandler = require('express-async-handler');
 
 const GetUsers = asyncHandler(async (req, res) => {
@@ -28,9 +28,34 @@ const GetUsers = asyncHandler(async (req, res) => {
     }
 });
 
-const UploadAvatar = asyncHandler(async (req, res) => {
+const UploadSingle = asyncHandler(async (req, res) => {
     try {
-        const result = await uploadImage(req.file);
+        let result;
+        if (req.file) {
+            result = await uploadImage(req.file, null);
+        } else {
+            if (req.body.image) {
+                result = await uploadImage(null, req.body.image);
+            }
+        }
+
+        res.status(200).json({ data: result });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+const UploadMultiple = asyncHandler(async (req, res) => {
+    try {
+        let result = [];
+        if (req.files) {
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const upload = await uploadImage(file, null);
+                result.push(upload);
+            }
+        }
+
         res.status(200).json({ data: result });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -39,5 +64,6 @@ const UploadAvatar = asyncHandler(async (req, res) => {
 
 module.exports = {
     GetUsers,
-    UploadAvatar,
+    UploadSingle,
+    UploadMultiple,
 };

@@ -62,6 +62,11 @@ const eventSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
+        post: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Post',
+            default: null,
+        },
         status: {
             validate: {
                 // this function will be called when the document is saved

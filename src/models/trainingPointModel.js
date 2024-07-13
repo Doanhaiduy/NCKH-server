@@ -67,11 +67,6 @@ const trainingPointSchema = new mongoose.Schema(
                 ],
             },
         ],
-        // status: {
-        //     type: mongoose.Schema.ObjectId,
-        //     ref: 'Status',
-        //     // default: '613f6f3e0f1f7e001f1b7c1d',
-        // },
         status: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],

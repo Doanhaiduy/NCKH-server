@@ -1,8 +1,9 @@
 const asyncHandler = require('express-async-handler');
 const UserModel = require('../models/userModel');
+const { getJwtToken } = require('../utils/jwt');
 
 const Login = asyncHandler(async (req, res) => {
-    const user = await UserModel.findOne({ email: req.body.email });
+    const user = await UserModel.findOne({ username: req.body.username });
     if (!user) {
         res.status(400);
         throw new Error('Không tìm thấy tài khoản');
@@ -10,7 +11,14 @@ const Login = asyncHandler(async (req, res) => {
         if (user.password === req.body.password) {
             res.status(200).json({
                 message: 'Đăng nhập thành công',
-                data: user,
+                data: {
+                    id: user._id,
+                    fullName: user.fullName,
+                    email: user.email,
+                    avatar: user.avatar,
+                    role: user.role,
+                    accessToken: getJwtToken(user._id, user.username, user.email, user.role),
+                },
             });
         } else {
             res.status(400);
@@ -22,7 +30,7 @@ const Login = asyncHandler(async (req, res) => {
 const Register = asyncHandler(async (req, res) => {
     const user = new UserModel({
         username: req.body.username,
-        name: req.body.name,
+        fullName: req.body.fullName,
         email: req.body.email,
         password: req.body.password,
         avatar: req.body.avatar,

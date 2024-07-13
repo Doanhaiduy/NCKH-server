@@ -14,7 +14,7 @@ const postSchema = new mongoose.Schema(
             maxLength: [100, 'Your post title cannot exceed 100 characters'],
         },
         content: {
-            type: Object,
+            type: String,
             required: [true, 'Please enter your post content'],
         },
         status: {
@@ -28,7 +28,7 @@ const postSchema = new mongoose.Schema(
     }
 );
 
-postSchema.index({ author: 1, title: 1 }, { unique: true });
+postSchema.index({ title: 1 }, { unique: true });
 
 postSchema.virtual('id').get(function () {
     return this._id.toHexString();

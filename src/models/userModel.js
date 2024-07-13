@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your password'],
             minLength: [6, 'Your password must be at least 6 characters'],
-            select: false,
+            // select: false,
         },
         avatar: {
             type: String,
@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema(
         role: {
             type: mongoose.Schema.ObjectId,
             ref: 'Role',
-            // default: '613f6f3e0f1f7e001f1b7c1d',
+            default: '613f6f3e0f1f7e001f1b7c1d',
             required: [true, 'Please enter your role'],
         },
         createdAt: {
