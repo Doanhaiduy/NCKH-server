@@ -24,6 +24,7 @@ const GetUsers = asyncHandler(async (req, res) => {
             res.status(200).json({ data: Users });
         }
     } catch (error) {
+        console.log('ERROR:', error);
         res.status(500).json({ message: error.message });
     }
 });
@@ -31,12 +32,12 @@ const GetUsers = asyncHandler(async (req, res) => {
 const UploadSingle = asyncHandler(async (req, res) => {
     try {
         let result;
-        if (req.file) {
-            result = await uploadImage(req.file, null);
+        const file = req.file;
+        console.log('req', { req: file });
+        if (file) {
+            result = await uploadImage(file);
         } else {
-            if (req.body.image) {
-                result = await uploadImage(null, req.body.image);
-            }
+            throw new Error('No file found');
         }
 
         res.status(200).json({ data: result });
@@ -46,6 +47,7 @@ const UploadSingle = asyncHandler(async (req, res) => {
 });
 
 const UploadMultiple = asyncHandler(async (req, res) => {
+    console.log(req.files);
     try {
         let result = [];
         if (req.files) {

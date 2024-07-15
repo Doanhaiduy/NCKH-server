@@ -1,25 +1,15 @@
 const cloudinary = require('../configs/cloudinary');
+const { transporter } = require('../configs/nodemailer');
 
-const uploadImage = async (file, url) => {
+const uploadImage = async (file) => {
+    console.log('file', file);
+
     try {
-        let dataURI = '';
-        let filename = '';
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        if (url) {
-            const base64Data = await convertBlobToBase64(url);
-            dataURI = `data:image/jpeg;base64,${base64Data}`;
-            filename = `${url.split('/').pop()}-${uniqueSuffix}`;
-        } else {
-            const originalFilename = file.originalname.split('.')[0];
-            filename = `${originalFilename}-${uniqueSuffix}`;
-            const b64 = Buffer.from(file.buffer).toString('base64');
-            dataURI = 'data:' + file.mimetype + ';base64,' + b64;
-        }
-
-        const result = await cloudinary.uploader.upload(dataURI, {
-            public_id: filename,
+        const result = await cloudinary.uploader.upload(file.path, {
+            public_id: file.filename,
             // folder: 'NCKH',
         });
+
         console.log(result);
 
         return {
@@ -31,6 +21,23 @@ const uploadImage = async (file, url) => {
     }
 };
 
+const genOTP = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    return otp;
+};
+
+const handleSendMail = async (val) => {
+    try {
+        await transporter.sendMail(val);
+        return 'OK';
+    } catch (error) {
+        console.log('ERROR', error);
+        return error;
+    }
+};
+
 module.exports = {
     uploadImage,
+    genOTP,
+    handleSendMail,
 };
