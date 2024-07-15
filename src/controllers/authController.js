@@ -10,7 +10,7 @@ const Login = asyncHandler(async (req, res) => {
         throw new Error('Vui lòng nhập tên đăng nhập và mật khẩu');
     }
 
-    const user = await UserModel.findOne({ username: req.body.username });
+    const user = await UserModel.findOne({ username: req.body.username }).populate('role');
 
     if (!user) {
         res.status(404);
@@ -26,8 +26,7 @@ const Login = asyncHandler(async (req, res) => {
                     fullName: user.fullName,
                     email: user.email,
                     avatar: user.avatar,
-                    role: user.role,
-                    accessToken: getJwtToken(user._id, user.username, user.email, user.role),
+                    accessToken: getJwtToken(user._id, user.username, user.email, user.role.name),
                 },
             });
         } else {
