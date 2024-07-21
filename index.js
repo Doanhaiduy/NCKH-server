@@ -27,7 +27,6 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(errorHandlerMiddleware);
 
 //routes
 app.get('/', (req, res) => {
@@ -38,6 +37,8 @@ app.use(`/api/v1/auth`, AuthRouter);
 app.use(`/api/v1/users`, UsersRouter);
 app.use(`/api/v1/posts`, PostRouter);
 app.use(`/api/v1/utils`, RoleRouter);
+
+app.use(errorHandlerMiddleware);
 
 //listen
 app.listen(PORT, () => {

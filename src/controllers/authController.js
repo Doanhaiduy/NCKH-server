@@ -10,7 +10,7 @@ const Login = asyncHandler(async (req, res) => {
         throw new Error('Vui lòng nhập tên đăng nhập và mật khẩu');
     }
 
-    const user = await UserModel.findOne({ username: req.body.username }).populate('role');
+    const user = await UserModel.findOne({ username: req.body.username }).populate('role', 'name');
 
     if (!user) {
         res.status(404);
@@ -26,6 +26,7 @@ const Login = asyncHandler(async (req, res) => {
                     fullName: user.fullName,
                     email: user.email,
                     avatar: user.avatar,
+                    role: user.role.name,
                     accessToken: getJwtToken(user._id, user.username, user.email, user.role.name),
                 },
             });
@@ -89,7 +90,7 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
             data: {
                 email: req.body.email,
                 otp,
-                expiredIn: Date.now() + 600000,
+                expiredIn: Date.now() + 30000,
             },
         });
     } else {
@@ -118,8 +119,8 @@ const ResetPassword = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({
-        message: 'Đổi mật khẩu thành công',
         data: {
+            message: 'Đổi mật khẩu thành công',
             email: req.body.email,
         },
     });

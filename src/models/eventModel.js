@@ -82,6 +82,7 @@ const eventSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
+        versionKey: false,
     }
 );
 

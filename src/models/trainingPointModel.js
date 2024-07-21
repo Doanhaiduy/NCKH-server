@@ -76,6 +76,7 @@ const trainingPointSchema = new mongoose.Schema(
 
     {
         timestamps: true,
+        versionKey: false,
     }
 );
 

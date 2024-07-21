@@ -11,7 +11,11 @@ const postSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your post title'],
             trim: true,
-            maxLength: [100, 'Your post title cannot exceed 100 characters'],
+            maxLength: [500, 'Your post title cannot exceed 100 characters'],
+        },
+        thumbnail: {
+            type: String,
+            default: 'https://res.cloudinary.com/dbnoomvgm/image/upload/v1719851707/NCKH/xw6ovct05dhrahgbebdc.jpg',
         },
         content: {
             type: String,
@@ -22,17 +26,23 @@ const postSchema = new mongoose.Schema(
             enum: ['draft', 'published'],
             default: 'draft',
         },
+        type: {
+            type: String,
+            enum: ['news', 'article'],
+            default: 'article',
+        },
     },
     {
         timestamps: true,
+        versionKey: false,
     }
 );
 
-postSchema.index({ title: 1 }, { unique: true });
+// postSchema.index({ title: 1 }, { unique: true });
 
-postSchema.virtual('id').get(function () {
-    return this._id.toHexString();
-});
+// postSchema.virtual('id').get(function () {
+//     return this._id.toHexString();
+// });
 
 postSchema.set('toJSON', {
     virtuals: true,

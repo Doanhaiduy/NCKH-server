@@ -8,10 +8,13 @@ const checkAuth = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
+        console.log(error);
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expired' });
+            res.status(401);
+            throw new Error('Token has expired');
         }
-        return res.status(401).json({ message: 'Token is not valid' });
+        res.status(401);
+        throw new Error('You are not authenticated');
     }
 };
 

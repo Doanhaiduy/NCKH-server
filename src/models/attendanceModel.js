@@ -44,6 +44,7 @@ const attendanceSchema = new mongoose.Schema(
     },
     {
         timestamps: true,
+        versionKey: false,
     }
 );
 

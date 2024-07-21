@@ -7,6 +7,6 @@ const Router = express.Router();
 
 Router.get('/get-all', [checkAuth, checkRole([Roles.ADMIN, Roles.USER])], GetPosts);
 Router.get('/:id', [checkAuth, checkRole([Roles.ADMIN, Roles.USER])], GetPostById);
-Router.post('/create', [checkAuth, checkRole([Roles.ADMIN])], CreatePost);
+Router.post('/create', [checkAuth, checkRole([Roles.ADMIN, Roles.USER])], CreatePost);
 
 module.exports = Router;
