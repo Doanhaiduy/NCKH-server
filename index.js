@@ -6,11 +6,6 @@ const bodyParser = require('body-parser');
 const connectDB = require('./src/configs/db');
 const errorHandlerMiddleware = require('./src/middlewares/errorHandlerMiddleware');
 
-const AuthRouter = require('./src/routes/authRouter');
-const UsersRouter = require('./src/routes/userRouter');
-const PostRouter = require('./src/routes/postRouter');
-const RoleRouter = require('./src/routes/roleRouter');
-
 //dotenv config
 dotenv.config();
 
@@ -21,22 +16,20 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const routerConfig = require('./src/routes/index');
+
 //middlewares
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(process.env.BASE_API_URL, routerConfig());
 
 //routes
 app.get('/', (req, res) => {
     res.send('Server is ready!!');
 });
-
-app.use(`/api/v1/auth`, AuthRouter);
-app.use(`/api/v1/users`, UsersRouter);
-app.use(`/api/v1/posts`, PostRouter);
-app.use(`/api/v1/utils`, RoleRouter);
 
 app.use(errorHandlerMiddleware);
 

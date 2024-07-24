@@ -28,8 +28,13 @@ const postSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['news', 'article'],
-            default: 'article',
+            enum: ['news', 'activity'],
+            default: 'activity',
+        },
+        category: {
+            type: String,
+            enum: ['news', 'activity'],
+            default: 'activity',
         },
     },
     {

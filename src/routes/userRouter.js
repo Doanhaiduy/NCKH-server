@@ -1,18 +1,11 @@
 const express = require('express');
 const Router = express.Router();
-const { GetUsers, UploadSingle, UploadMultiple } = require('../controllers/userController');
-const upload = require('../configs/multer');
+const { GetUsers } = require('../controllers/userController');
 const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
-const Roles = require('../constants/roles');
+const ROLES = require('../constants/roles');
+const ROUTES = require('../constants/routes');
 
-Router.get('/get-all', [checkAuth, checkRole([Roles.ADMIN, Roles.USER])], GetUsers);
-Router.post('/upload', [checkAuth, checkRole([Roles.ADMIN, Roles.USER])], upload.single('image'), UploadSingle);
-Router.post(
-    '/upload-multiple',
-    [checkAuth, checkRole([Roles.ADMIN, Roles.USER])],
-    upload.array('images', 10),
-    UploadMultiple
-);
+Router.get(ROUTES.USER.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetUsers);
 
 module.exports = Router;
