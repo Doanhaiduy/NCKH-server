@@ -3,6 +3,13 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     if (err.name === 'MongoServerError') {
         let errors = {};
         if (err.code === 11000) {
+            console.log('ERROR', err.keyValue);
+            if (err.keyValue.event && err.keyValue.user) {
+                return res.status(400).json({
+                    message: 'You have already checked in!',
+                    statusCode: 400,
+                });
+            }
             errors[Object.keys(err.keyValue)[0]] = `${Object.keys(err.keyValue)[0]} is already taken!`;
         }
 

@@ -1,8 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const PostModel = require('../models/postModel');
+const mongoose = require('mongoose');
 
+// [GET] /api/v1/posts/get-all
 const GetPosts = asyncHandler(async (req, res) => {
-    let { page, size, category, time } = req.query;
+    let { page, size, category, time, search } = req.query;
     if (!page) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -11,8 +13,12 @@ const GetPosts = asyncHandler(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
-    if (category === 'news' || category === 'activity') {
+    if (['news', 'activity'].includes(category)) {
         query.category = category;
+    }
+
+    if (search) {
+        query.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
     }
 
     // if (time === 'past') {
@@ -46,6 +52,7 @@ const GetPosts = asyncHandler(async (req, res) => {
     });
 });
 
+// [GET] /api/v1/posts/:id
 const GetPostById = asyncHandler(async (req, res) => {
     const post = await PostModel.findById(req.params.id).select('-updatedAt -__v').populate('author', 'fullName email');
     if (!post) {
@@ -55,12 +62,8 @@ const GetPostById = asyncHandler(async (req, res) => {
     res.status(200).json({ data: post });
 });
 
+// [POST] /api/v1/posts/create
 const CreatePost = asyncHandler(async (req, res) => {
-    if (!req.body.title || !req.body.content || !req.body.author) {
-        res.status(400);
-        throw new Error('Title and content are required');
-    }
-
     const post = new PostModel({
         author: req.body.author,
         title: req.body.title,
@@ -78,12 +81,55 @@ const CreatePost = asyncHandler(async (req, res) => {
     res.status(201).json({ data: post });
 });
 
-const createMultiplePosts = asyncHandler(async (req, res) => {
-    0;
+// [PUT] /api/v1/posts/update/:id
+const UpdatePost = asyncHandler(async (req, res) => {
+    const title = req.body.title;
+    const content = req.body.content;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error('Invalid post id');
+    }
+
+    const post = await PostModel.findById(req.params.id);
+
+    if (post) {
+        post.title = title || post.title;
+        post.content = content || post.content;
+
+        const updatedPost = await post.save();
+        res.status(200).json({
+            message: 'Post updated',
+            data: updatedPost,
+        });
+    } else {
+        res.status(404);
+        throw new Error('Post not found');
+    }
+});
+
+// [DELETE] /api/v1/posts/:id
+const DeletePost = asyncHandler(async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        res.status(400);
+        throw new Error('Invalid post id');
+    }
+
+    const post = await PostModel.findById(req.params.id);
+
+    if (!post) {
+        res.status(404);
+        throw new Error('Post not found');
+    }
+
+    await post.deleteOne();
+
+    res.status(200).json({ message: 'Post deleted' });
 });
 
 module.exports = {
     GetPostById,
     CreatePost,
     GetPosts,
+    UpdatePost,
+    DeletePost,
 };

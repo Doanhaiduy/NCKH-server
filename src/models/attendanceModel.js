@@ -18,11 +18,9 @@ const attendanceSchema = new mongoose.Schema(
         },
 
         status: {
-            validate: {
-                // this function will be called when the document is saved
-            },
-            enum: ['pending', 'active', 'inactive'],
-            default: 'active',
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending',
         },
 
         location: {

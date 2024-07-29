@@ -32,6 +32,11 @@ const eventSchema = new mongoose.Schema(
             type: Number,
             required: [true, 'Please enter your event max attendees'],
         },
+        thumbnail: {
+            type: String,
+            default:
+                'https://res.cloudinary.com/dbnoomvgm/image/upload/v1721527942/8399068_dtcl-1721527938411-892185604.webp.webp',
+        },
         location: {
             lat: {
                 type: Number,
@@ -68,15 +73,14 @@ const eventSchema = new mongoose.Schema(
             default: null,
         },
         status: {
-            validate: {
-                // this function will be called when the document is saved
-            },
-            enum: ['pending', 'active', 'inactive'],
+            type: String,
+            enum: ['active', 'inactive', 'deleted'],
+            default: 'active',
         },
         attendeesList: [
             {
                 type: mongoose.Schema.ObjectId,
-                ref: 'User',
+                ref: 'Attendance',
             },
         ],
     },

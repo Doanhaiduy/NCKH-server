@@ -1,6 +1,7 @@
 const asyncHandle = require('express-async-handler');
 const RoleSchema = require('../models/roleModel');
 
+// [POST] /api/v1/utils/set-new-role
 const SetNewRole = asyncHandle(async (req, res) => {
     if (!req.body.name || !req.body.description) {
         res.status(400);

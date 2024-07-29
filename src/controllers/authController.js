@@ -4,6 +4,7 @@ const { getJwtToken } = require('../utils/jwt');
 const { genOTP, handleSendMail } = require('../utils');
 const bcrypt = require('bcrypt');
 
+// [POST] /api/v1/auth/login
 const Login = asyncHandler(async (req, res) => {
     if (!req.body.username || !req.body.password) {
         res.status(400);
@@ -37,6 +38,7 @@ const Login = asyncHandler(async (req, res) => {
     }
 });
 
+// [POST] /api/v1/auth/register
 const Register = asyncHandler(async (req, res) => {
     const hashPassword = await bcrypt.hash(req.body.password, 10);
     const user = new UserModel({
@@ -60,6 +62,7 @@ const Register = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/auth/send-reset-password-email
 const SendResetPasswordEmail = asyncHandler(async (req, res) => {
     if (!req.body.email) {
         res.status(400);
@@ -99,6 +102,7 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
     }
 });
 
+// [POST] /api/v1/auth/reset-password
 const ResetPassword = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.newPassword) {
         res.status(400);
@@ -126,6 +130,7 @@ const ResetPassword = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/auth/change-password
 const ChangePassword = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.oldPassword || !req.body.newPassword) {
         res.status(400);
