@@ -1,5 +1,5 @@
 const errorHandlerMiddleware = (err, req, res, next) => {
-    const statusCode = res.statusCode ? res.statusCode : 500;
+    const statusCode = err.name === 'Error' ? 400 : err.statusCode || 500;
     if (err.name === 'MongoServerError') {
         let errors = {};
         if (err.code === 11000) {

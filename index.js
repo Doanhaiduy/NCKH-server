@@ -5,11 +5,13 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const connectDB = require('./src/configs/db');
 const errorHandlerMiddleware = require('./src/middlewares/errorHandlerMiddleware');
+const { connectRedis } = require('./src/configs/redis');
 
 //dotenv config
 dotenv.config();
 
 //db connection
+connectRedis();
 connectDB();
 
 //init express

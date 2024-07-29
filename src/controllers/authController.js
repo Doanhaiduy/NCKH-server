@@ -1,8 +1,10 @@
 const asyncHandler = require('express-async-handler');
 const UserModel = require('../models/userModel');
-const { getJwtToken } = require('../utils/jwt');
+const { generalJwtAccessToken, generalJwtRefreshToken, refreshTokenService } = require('../utils/jwt');
 const { genOTP, handleSendMail } = require('../utils');
 const bcrypt = require('bcrypt');
+const { redisClient } = require('../configs/redis');
+const jwt = require('jsonwebtoken');
 
 // [POST] /api/v1/auth/login
 const Login = asyncHandler(async (req, res) => {
@@ -19,6 +21,25 @@ const Login = asyncHandler(async (req, res) => {
     } else {
         const matchPassword = await bcrypt.compare(req.body.password, user.password);
         if (matchPassword) {
+            const accessToken = generalJwtAccessToken({
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role.name,
+            });
+
+            const refreshToken = await generalJwtRefreshToken({
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role.name,
+            });
+
+            if (!refreshToken || !accessToken) {
+                res.status(500);
+                throw new Error('Failed to generate refresh token');
+            }
+
             res.status(200).json({
                 message: 'Đăng nhập thành công',
                 data: {
@@ -28,7 +49,8 @@ const Login = asyncHandler(async (req, res) => {
                     email: user.email,
                     avatar: user.avatar,
                     role: user.role.name,
-                    accessToken: getJwtToken(user._id, user.username, user.email, user.role.name),
+                    accessToken,
+                    refreshToken,
                 },
             });
         } else {
@@ -36,6 +58,28 @@ const Login = asyncHandler(async (req, res) => {
             throw new Error('Mật khẩu không chính xác');
         }
     }
+});
+
+// [POST] /api/v1/auth/refresh-token
+const RefreshToken = asyncHandler(async (req, res) => {
+    const refreshToken = req.headers.token.split(' ')[1];
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error('Refresh token is missing');
+    }
+
+    const newAccessToken = await refreshTokenService(refreshToken);
+    if (!newAccessToken) {
+        res.status(401);
+        throw new Error('Invalid refresh token');
+    }
+    res.json({
+        message: 'Refresh token successfully',
+        data: {
+            accessToken: newAccessToken,
+        },
+    });
 });
 
 // [POST] /api/v1/auth/register
@@ -57,7 +101,6 @@ const Register = asyncHandler(async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             role: user.role,
-            accessToken: getJwtToken(user._id, user.username, user.email, user.role),
         },
     });
 });
@@ -170,10 +213,30 @@ const ChangePassword = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/auth/logout
+const Logout = asyncHandler(async (req, res) => {
+    const refreshToken = req.headers.token.split(' ')[1];
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error('Refresh token is missing');
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET);
+
+    await redisClient.del(decoded.id.toString());
+
+    res.status(200).json({
+        message: 'Đăng xuất thành công',
+    });
+});
+
 module.exports = {
     Login,
     Register,
     SendResetPasswordEmail,
     ResetPassword,
     ChangePassword,
+    RefreshToken,
+    Logout,
 };

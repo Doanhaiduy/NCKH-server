@@ -6,6 +6,8 @@ const ROUTES = Object.freeze({
         SEND_RESET_PASSWORD_EMAIL: '/send-reset-password-email',
         RESET_PASSWORD: '/reset-password',
         CHANGE_PASSWORD: '/change-password',
+        REFRESH_TOKEN: '/refresh-token',
+        LOGOUT: '/logout',
     },
     USER: {
         ROOT: '/users',
