@@ -5,19 +5,19 @@ const { genOTP, handleSendMail } = require('../utils');
 const bcrypt = require('bcrypt');
 const { redisClient } = require('../configs/redis');
 const jwt = require('jsonwebtoken');
+const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
 
 // [POST] /api/v1/auth/login
 const Login = asyncHandler(async (req, res) => {
     if (!req.body.username || !req.body.password) {
-        res.status(400);
-        throw new Error('Vui lòng nhập tên đăng nhập và mật khẩu');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Username and password are required');
     }
 
     const user = await UserModel.findOne({ username: req.body.username }).populate('role', 'name');
 
     if (!user) {
-        res.status(404);
-        throw new Error('Không tìm thấy tài khoản');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     } else {
         const matchPassword = await bcrypt.compare(req.body.password, user.password);
         if (matchPassword) {
@@ -36,8 +36,7 @@ const Login = asyncHandler(async (req, res) => {
             });
 
             if (!refreshToken || !accessToken) {
-                res.status(500);
-                throw new Error('Failed to generate refresh token');
+                throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Generate token failed');
             }
 
             res.status(200).json({
@@ -54,25 +53,23 @@ const Login = asyncHandler(async (req, res) => {
                 },
             });
         } else {
-            res.status(403);
-            throw new Error('Mật khẩu không chính xác');
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Password is incorrect');
         }
     }
 });
 
 // [POST] /api/v1/auth/refresh-token
 const RefreshToken = asyncHandler(async (req, res) => {
+    console.log('req.headers.token', req.headers.token);
     const refreshToken = req.headers.token.split(' ')[1];
-
+    console.log('refreshToken', refreshToken);
     if (!refreshToken) {
-        res.status(401);
-        throw new Error('Refresh token is missing');
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }
 
     const newAccessToken = await refreshTokenService(refreshToken);
     if (!newAccessToken) {
-        res.status(401);
-        throw new Error('Invalid refresh token');
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Generate token failed');
     }
     res.json({
         message: 'Refresh token successfully',
@@ -108,15 +105,13 @@ const Register = asyncHandler(async (req, res) => {
 // [POST] /api/v1/auth/send-reset-password-email
 const SendResetPasswordEmail = asyncHandler(async (req, res) => {
     if (!req.body.email) {
-        res.status(400);
-        throw new Error('Vui lòng nhập email');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Email is required');
     }
 
     const findUser = await UserModel.findOne({ email: req.body.email });
 
     if (!findUser) {
-        res.status(404);
-        throw new Error('Không tìm thấy tài khoản');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản');
     }
 
     const otp = genOTP();
@@ -140,16 +135,14 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
             },
         });
     } else {
-        res.status(500);
-        throw new Error('Gửi email thất bại');
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'failed to send email');
     }
 });
 
 // [POST] /api/v1/auth/reset-password
 const ResetPassword = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.newPassword) {
-        res.status(400);
-        throw new Error('Thông tin không hợp lệ');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and new password are required');
     }
 
     const findUser = await UserModel.findOne({ email: req.body.email });
@@ -157,8 +150,7 @@ const ResetPassword = asyncHandler(async (req, res) => {
     const hashPassword = await bcrypt.hash(req.body.newPassword, 10);
 
     if (!findUser) {
-        res.status(404);
-        throw new Error('Không tìm thấy tài khoản');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
     await findUser.updateOne({
@@ -176,8 +168,7 @@ const ResetPassword = asyncHandler(async (req, res) => {
 // [POST] /api/v1/auth/change-password
 const ChangePassword = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.oldPassword || !req.body.newPassword) {
-        res.status(400);
-        throw new Error('Thông tin không hợp lệ');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Email, old password and new password are required');
     }
 
     const findUser = await UserModel.findOne({ email: req.body.email });
@@ -185,18 +176,15 @@ const ChangePassword = asyncHandler(async (req, res) => {
     const matchPassword = await bcrypt.compare(req.body.oldPassword, findUser.password);
 
     if (!findUser) {
-        res.status(404);
-        throw new Error('Không tìm thấy tài khoản');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
     if (!matchPassword) {
-        res.status(403);
-        throw new Error('Mật khẩu cũ không chính xác');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Old password is incorrect');
     }
 
     if (matchPassword && req.body.oldPassword === req.body.newPassword) {
-        res.status(403);
-        throw new Error('Mật khẩu mới không được trùng với mật khẩu cũ');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'New password must be different from old password');
     }
 
     const hashPassword = await bcrypt.hash(req.body.newPassword, 10);
@@ -218,11 +206,16 @@ const Logout = asyncHandler(async (req, res) => {
     const refreshToken = req.headers.token.split(' ')[1];
 
     if (!refreshToken) {
-        res.status(401);
-        throw new Error('Refresh token is missing');
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET);
+    let decoded;
+
+    try {
+        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET);
+    } catch (error) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid token');
+    }
 
     await redisClient.del(decoded.id.toString());
 

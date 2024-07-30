@@ -1,17 +1,16 @@
 const asyncHandle = require('express-async-handler');
 const RoleSchema = require('../models/roleModel');
+const ApiError = require('../utils/ApiError');
 
 // [POST] /api/v1/utils/set-new-role
 const SetNewRole = asyncHandle(async (req, res) => {
     if (!req.body.name || !req.body.description) {
-        res.status(400);
-        throw new Error('Vui lòng nhập đủ thông tin');
+        throw new ApiError(statusCodes.BAD_REQUEST, 'Name and description are required');
     }
 
     const hasRole = await RoleSchema.findOne({ name: req.body.name });
     if (hasRole) {
-        res.status(400);
-        throw new Error('Role đã tồn tại');
+        throw new ApiError(statusCodes.BAD_REQUEST, 'Role has already existed');
     }
 
     const newRole = new RoleSchema({

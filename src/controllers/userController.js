@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const UserModel = require('../models/userModel');
 const { uploadImage } = require('../utils');
 const asyncHandler = require('express-async-handler');
+const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
 
 // [GET] /api/v1/users/get-all
 const GetUsers = asyncHandler(async (req, res) => {
@@ -104,7 +106,7 @@ const UploadSingle = asyncHandler(async (req, res) => {
         if (file) {
             result = await uploadImage(file);
         } else {
-            throw new Error('No file found');
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'File not found');
         }
 
         res.status(200).json({ data: result });

@@ -1,6 +1,8 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { redisClient } = require('../configs/redis');
+const ApiError = require('./ApiError');
+const { StatusCodes } = require('http-status-codes');
 
 const generalJwtAccessToken = (data) => {
     return jwt.sign(data, process.env.JWT_ACCESS_TOKEN_SECRET, {
@@ -42,7 +44,7 @@ const refreshTokenService = async (token) => {
 
         return null;
     } catch (error) {
-        throw new Error(error.message);
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Unauthorized');
     }
 };
 

@@ -1,12 +1,13 @@
+const { StatusCodes } = require('http-status-codes');
+const ApiError = require('../utils/ApiError');
+
 const checkRole = (role) => {
     return (req, res, next) => {
         if (!req.user) {
-            res.status(401);
-            throw new Error('Bạn cần phải đăng nhập');
+            throw new ApiError(StatusCodes.UNAUTHORIZED, 'You are not authenticated');
         }
         if (!role.includes(req.user.role)) {
-            res.status(403);
-            throw new Error('Bạn không có quyền truy cập');
+            throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this route');
         }
         next();
     };
