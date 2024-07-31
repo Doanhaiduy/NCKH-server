@@ -36,13 +36,15 @@ const GetUsers = asyncHandler(async (req, res) => {
     const next_pages = Math.ceil((total_documents - skip) / size);
 
     res.status(200).json({
-        message: 'Success',
-        total: total_documents,
-        page: page,
-        size: size,
-        previous: previous_pages,
-        next: next_pages,
-        data: users,
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            users,
+        },
     });
 });
 
@@ -55,10 +57,13 @@ const getUserByIdOrUsername = asyncHandler(async (req, res) => {
     const user = await UserModel.findOne(query).select('-password -__v').populate('role', 'name');
 
     if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
-    res.status(200).json({ data: user });
+    res.status(200).json({
+        status: 'success',
+        data: user,
+    });
 });
 
 // [PUT] /api/v1/users/:id
@@ -69,20 +74,17 @@ const UpdateUser = asyncHandler(async (req, res) => {
     const role = req.body.role;
 
     if (!mongoose.Types.ObjectId.isValid(role)) {
-        res.status(400).json({ message: 'Invalid role id' });
-        return;
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid role id');
     }
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        res.status(400).json({ message: 'Invalid user id' });
-        return;
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
     }
 
     const user = await UserModel.findById(req.params.id);
 
     if (!user) {
-        res.status(404).json({ message: 'User not found' });
-        return;
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
     if (password) {
@@ -94,7 +96,7 @@ const UpdateUser = asyncHandler(async (req, res) => {
     user.role = role || user.role;
 
     const updatedUser = await user.save();
-    res.status(200).json({ message: 'User updated', data: updatedUser });
+    res.status(200).json({ status: 'success', data: updatedUser });
 });
 
 // [POST] /api/v1/utils/upload
@@ -109,9 +111,12 @@ const UploadSingle = asyncHandler(async (req, res) => {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'File not found');
         }
 
-        res.status(200).json({ data: result });
+        res.status(200).json({
+            status: 'success',
+            data: result,
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        throw new ApiError(StatusCodes.BAD_REQUEST, error.message);
     }
 });
 
@@ -128,9 +133,12 @@ const UploadMultiple = asyncHandler(async (req, res) => {
             }
         }
 
-        res.status(200).json({ data: result });
+        res.status(200).json({
+            status: 'success',
+            data: result,
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        throw new ApiError(StatusCodes.BAD_REQUEST, error.message);
     }
 });
 

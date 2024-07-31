@@ -76,13 +76,15 @@ const GetEvents = asyncHandler(async (req, res) => {
     const next_pages = Math.ceil((total_documents - skip) / size);
 
     res.status(200).json({
-        message: 'Success',
-        total: total_documents,
-        page: page,
-        size: size,
-        previous: previous_pages,
-        next: next_pages,
-        data: events,
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            events,
+        },
     });
 });
 
@@ -98,10 +100,13 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
         .populate('post', 'title');
 
     if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
+        throw new ApiError(statusCodes.NOT_FOUND, 'Event not found');
     }
 
-    res.status(200).json({ data: event });
+    res.status(200).json({
+        status: 'success',
+        data: event,
+    });
 });
 
 // [POST] /api/v1/events/create
@@ -170,7 +175,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
     const createdEvent = await event.save();
 
     res.status(201).json({
-        message: 'Success',
+        status: 'success',
         data: createdEvent,
     });
 });
@@ -198,7 +203,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
         event.post = post || event.post;
         const updatedEvent = await event.save();
         return res.status(200).json({
-            message: 'Success',
+            status: 'success',
             data: updatedEvent,
         });
     }
@@ -234,7 +239,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     const updatedEvent = await event.save();
 
     res.status(200).json({
-        message: 'Success',
+        status: 'success',
         data: updatedEvent,
     });
 });
@@ -252,7 +257,8 @@ const DeleteEvent = asyncHandler(async (req, res) => {
 
     await event.deleteOne();
     res.status(200).json({
-        message: 'Event removed',
+        status: 'success',
+        data: null,
     });
 });
 
@@ -284,13 +290,15 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
     const next_pages = Math.ceil((total_documents - skip) / size);
 
     res.status(200).json({
-        message: 'Success',
-        total: total_documents,
-        page: page,
-        size: size,
-        previous: previous_pages,
-        next: next_pages,
-        data: event.attendeesList,
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            attendees: event.attendeesList,
+        },
     });
 });
 
@@ -342,7 +350,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
     await event.save();
 
     res.status(200).json({
-        message: 'Success',
+        status: 'success',
         data: newAttendance,
     });
 });
@@ -368,30 +376,56 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
     const updatedAttendance = await attendance.save();
 
     res.status(200).json({
-        message: 'Success',
+        status: 'success',
         data: updatedAttendance,
     });
 });
 
 // [GET] /api/v1/users/:id/attendance
 const GetAttendanceByUser = asyncHandler(async (req, res) => {
+    let { status, page, size } = req.query;
+
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    let queryAttendances = {};
     const idOrUsername = req.params.id;
 
     const query = mongoose.Types.ObjectId.isValid(idOrUsername) ? { _id: idOrUsername } : { username: idOrUsername };
 
+    if (['pending', 'approved', 'rejected'].includes(status)) {
+        queryAttendances.status = status;
+    }
+
     const user = await UserModel.findOne(query).select('_id');
 
     if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        throw new ApiError(statusCodes.NOT_FOUND, 'User not found');
     }
 
-    const attendances = await AttendanceModel.find({ user: user._id })
+    const attendances = await AttendanceModel.find({ user: user._id, ...queryAttendances })
+        .select('-updatedAt -__v -createdAt')
+        .limit(limit)
+        .skip(skip)
         .populate('event', 'name startAt endAt location')
         .populate('user', 'fullName username email');
 
+    const total_documents = attendances.length;
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size);
+
     res.status(200).json({
-        message: 'Success',
-        data: attendances,
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            attendances,
+        },
     });
 });
 

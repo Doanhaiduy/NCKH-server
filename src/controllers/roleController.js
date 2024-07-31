@@ -20,7 +20,10 @@ const SetNewRole = asyncHandle(async (req, res) => {
 
     await newRole.save();
 
-    res.status(201).json({ data: newRole });
+    res.status(201).json({
+        status: 'success',
+        data: newRole,
+    });
 });
 
 module.exports = {

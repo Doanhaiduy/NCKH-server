@@ -43,13 +43,15 @@ const GetPosts = asyncHandler(async (req, res) => {
     const next_pages = Math.ceil((total_documents - skip) / size);
 
     res.status(200).json({
-        message: 'Success',
-        total: total_documents,
-        page: page,
-        size: size,
-        previous: previous_pages,
-        next: next_pages,
-        data: posts,
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            posts,
+        },
     });
 });
 
@@ -59,7 +61,10 @@ const GetPostById = asyncHandler(async (req, res) => {
     if (!post) {
         throw new ApiError(statusCodes.NOT_FOUND, 'Post not found');
     }
-    res.status(200).json({ data: post });
+    res.status(200).json({
+        status: 'success',
+        data: post,
+    });
 });
 
 // [POST] /api/v1/posts/create
@@ -78,7 +83,10 @@ const CreatePost = asyncHandler(async (req, res) => {
     //     await PostModel.insertMany(newPosts);
     // }
     await post.save();
-    res.status(201).json({ data: post });
+    res.status(201).json({
+        status: 'success',
+        data: post,
+    });
 });
 
 // [PUT] /api/v1/posts/update/:id
@@ -97,7 +105,7 @@ const UpdatePost = asyncHandler(async (req, res) => {
 
         const updatedPost = await post.save();
         res.status(200).json({
-            message: 'Post updated',
+            status: 'success',
             data: updatedPost,
         });
     } else {
@@ -119,7 +127,10 @@ const DeletePost = asyncHandler(async (req, res) => {
 
     await post.deleteOne();
 
-    res.status(200).json({ message: 'Post deleted' });
+    res.status(200).json({
+        status: 'success',
+        data: null,
+    });
 });
 
 module.exports = {

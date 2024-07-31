@@ -40,7 +40,7 @@ const Login = asyncHandler(async (req, res) => {
             }
 
             res.status(200).json({
-                message: 'Đăng nhập thành công',
+                status: 'success',
                 data: {
                     id: user._id,
                     username: user.username,
@@ -91,7 +91,7 @@ const Register = asyncHandler(async (req, res) => {
     });
     await user.save();
     res.status(201).json({
-        message: 'Đăng ký thành công',
+        status: 'success',
         data: {
             id: user._id,
             fullName: user.fullName,
@@ -127,7 +127,7 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
 
     if (result === 'OK') {
         res.status(200).json({
-            message: 'Đã gửi mã OTP',
+            status: 'success',
             data: {
                 email: req.body.email,
                 otp,
@@ -158,8 +158,8 @@ const ResetPassword = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({
+        status: 'success',
         data: {
-            message: 'Đổi mật khẩu thành công',
             email: req.body.email,
         },
     });
@@ -194,7 +194,7 @@ const ChangePassword = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({
-        message: 'Đổi mật khẩu thành công',
+        status: 'success',
         data: {
             email: req.body.email,
         },
@@ -220,7 +220,8 @@ const Logout = asyncHandler(async (req, res) => {
     await redisClient.del(decoded.id.toString());
 
     res.status(200).json({
-        message: 'Đăng xuất thành công',
+        status: 'success',
+        data: null,
     });
 });
 
