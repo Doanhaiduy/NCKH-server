@@ -4,9 +4,11 @@ const AttendanceModel = require('../models/attendanceModel');
 const UserModel = require('../models/userModel');
 const PostModel = require('../models/postModel');
 const QRCode = require('qrcode');
-const { encryptData, uploadQRBase64 } = require('../utils');
+const { encryptData } = require('../utils');
+const { uploadQRBase64, destroyImage } = require('../utils/cloudinary');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
 
 const createQRCode = async (data) => {
     if (!data) return null;
@@ -100,7 +102,7 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
         .populate('post', 'title');
 
     if (!event) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Event not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
     res.status(200).json({
@@ -118,7 +120,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
         endAt,
         maxAttendees = 100,
         location,
-        distanceLimit,
+        distanceLimit = 0,
         author,
         post = null,
         thumbnail,
@@ -126,23 +128,20 @@ const CreateEvent = asyncHandler(async (req, res) => {
 
     const eventCode = 'EVENT-' + Date.now();
     if (startAt > endAt) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Start date must be before end date');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Start date must be before end date');
     }
 
-    if (!name || !description || !endAt || !location || !distanceLimit || !author) {
-        throw new ApiError(
-            statusCodes.BAD_REQUEST,
-            'Name, description, end date, location, distance limit, author are required'
-        );
+    if (!name || !description || !endAt || !location || !author) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Name, description, end date, location,  author are required');
     }
 
     if (post) {
         if (!mongoose.Types.ObjectId.isValid(post)) {
-            throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid post id');
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid post id');
         } else {
             const postExist = await PostModel.findById(post);
             if (!postExist) {
-                throw new ApiError(statusCodes.NOT_FOUND, 'Post not found');
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Post not found');
             }
         }
     }
@@ -193,12 +192,12 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     const post = req.body.post;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid event id');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event id');
     }
 
     const event = await EventModel.findById(req.params.id);
 
-    if (!name && !description && !startAt && !endAt && !maxAttendees && !location && !distanceLimit) {
+    if (!name && !description && !startAt && !endAt && !maxAttendees && !location && distanceLimit === undefined) {
         event.thumbnail = thumbnail || event.thumbnail;
         event.post = post || event.post;
         const updatedEvent = await event.save();
@@ -209,16 +208,22 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     }
 
     if (startAt > endAt) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Start date must be before end date');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Start date must be before end date');
     }
 
     const newEventCode = 'EVENT-' + Date.now();
+
+    const result = await destroyImage(event.qrCodeUrl);
+
+    if (result.result !== 'ok') {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Delete old QR code failed');
+    }
 
     const qrCodeUrl = await createQRCode({
         eventCode: newEventCode,
         name: name || event.name,
         location: location || event.location,
-        distanceLimit: distanceLimit || event.distanceLimit,
+        distanceLimit: distanceLimit === undefined ? event.distanceLimit : distanceLimit,
         startAt: startAt || event.startAt,
         endAt: endAt || event.endAt,
         maxAttendees: maxAttendees || event.maxAttendees,
@@ -231,7 +236,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     event.endAt = endAt || event.endAt;
     event.maxAttendees = maxAttendees || event.maxAttendees;
     event.location = location || event.location;
-    event.distanceLimit = distanceLimit || event.distanceLimit;
+    event.distanceLimit = distanceLimit === undefined ? event.distanceLimit : distanceLimit;
     event.qrCodeUrl = qrCodeUrl || event.qrCodeUrl;
     event.thumbnail = thumbnail || event.thumbnail;
     event.post = post || event.post;
@@ -247,12 +252,12 @@ const UpdateEvent = asyncHandler(async (req, res) => {
 // [DELETE] /api/v1/events/:id
 const DeleteEvent = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid event id');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event id');
     }
 
     const event = await EventModel.findById(req.params.id);
     if (!event) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Event not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
     await event.deleteOne();
@@ -282,7 +287,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
         .select('attendeesList');
 
     if (!event) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Event not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
     const total_documents = event.attendeesList.length;
@@ -305,54 +310,58 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
 // [POST] /api/v1/events/:id/check-in
 const CheckInEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { lat, lng, name, time, userId } = req.body;
+    let { location, checkInAt, userId } = req.body;
     const event = await EventModel.findById(id);
+    if (!checkInAt) {
+        checkInAt = Date.now();
+    }
 
     if (!event) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Event not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
     // if (event.startAt > new Date()) {
-    //     throw new ApiError(statusCodes.BAD_REQUEST, 'Event has not started yet');
+    //     throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has not started yet');
     // }
 
     // if (event.endAt < new Date()) {
-    //     throw new ApiError(statusCodes.BAD_REQUEST, 'Event has ended');
+    //     throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has ended');
     // }
 
     if (event.attendeesList.length >= event.maxAttendees) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Event has reached maximum attendees');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has reached maximum attendees');
     }
 
-    if (time < event.startAt || time > event.endAt) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid check in time');
+    if (checkInAt < event.startAt || checkInAt > event.endAt) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid check in time');
     }
 
     const attendance = await AttendanceModel.findOne({ event: id, user: req.user._id });
 
     if (attendance) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'You have already checked in');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'You have already checked in');
     }
 
-    const newAttendance = new AttendanceModel({
+    await AttendanceModel.create({
         event: id,
         user: userId,
-        checkInAt: time,
-        location: {
-            lat,
-            lng,
-            name,
-        },
-    });
-
-    event.attendeesList.push(newAttendance._id);
-    await newAttendance.save();
-    await event.save();
-
-    res.status(200).json({
-        status: 'success',
-        data: newAttendance,
-    });
+        checkInAt,
+        location,
+    })
+        .then((newAttendance) => {
+            event.attendeesList.push(newAttendance._id);
+            event.save();
+            res.status(200).json({
+                status: 'success',
+                data: newAttendance,
+            });
+        })
+        .catch((error) => {
+            if (error.code === 11000) {
+                throw new ApiError(StatusCodes.BAD_REQUEST, 'You have already checked in');
+            }
+            throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, error.message);
+        });
 });
 
 // [PUT] /api/v1/attendances/:id
@@ -362,7 +371,7 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
     const attendance = await AttendanceModel.findById(id);
 
     if (!attendance) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Attendance not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Attendance not found');
     }
 
     if (status === 'approved') {
@@ -370,7 +379,7 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
     } else if (status === 'rejected') {
         attendance.status = status;
     } else {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid status');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid status');
     }
 
     const updatedAttendance = await attendance.save();
@@ -382,7 +391,7 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
 });
 
 // [GET] /api/v1/users/:id/attendance
-const GetAttendanceByUser = asyncHandler(async (req, res) => {
+const GetAttendancesByUser = asyncHandler(async (req, res) => {
     let { status, page, size } = req.query;
 
     if (!page) page = 1;
@@ -402,14 +411,14 @@ const GetAttendanceByUser = asyncHandler(async (req, res) => {
     const user = await UserModel.findOne(query).select('_id');
 
     if (!user) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'User not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
     const attendances = await AttendanceModel.find({ user: user._id, ...queryAttendances })
         .select('-updatedAt -__v -createdAt')
         .limit(limit)
         .skip(skip)
-        .populate('event', 'name startAt endAt location')
+        .populate('event', 'name startAt endAt location eventCode')
         .populate('user', 'fullName username email');
 
     const total_documents = attendances.length;
@@ -438,5 +447,5 @@ module.exports = {
     GetAttendeesList,
     CheckInEvent,
     UpdateStatusAttendance,
-    GetAttendanceByUser,
+    GetAttendancesByUser,
 };

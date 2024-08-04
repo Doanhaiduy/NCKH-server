@@ -12,9 +12,12 @@ const ROUTES = Object.freeze({
     USER: {
         ROOT: '/users',
         ID: '/:id',
-        GET_ATTENDANCE: '/:id/attendance',
+        GET_ATTENDANCE: '/:id/attendances',
+        GET_TRAINING_POINTS: '/:id/training-points',
         GET_ALL: '/get-all',
         ID: '/:id',
+        UPLOAD: '/upload',
+        UPLOAD_MULTIPLE: '/upload-multiple',
     },
     POST: {
         ROOT: '/posts',
@@ -36,11 +39,15 @@ const ROUTES = Object.freeze({
         ID: '/:id',
         CREATE: '/create',
     },
+    TRAINING_POINT: {
+        ROOT: '/training-points',
+        GET_ALL: '/get-all',
+        ID: '/:id',
+        CREATE: '/create',
+    },
     UTILS: {
         ROOT: '/utils',
         SET_NEW_ROLE: '/set-new-role',
-        UPLOAD: '/upload',
-        UPLOAD_MULTIPLE: '/upload-multiple',
     },
 });
 

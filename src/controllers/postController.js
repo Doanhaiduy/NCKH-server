@@ -2,7 +2,7 @@ const asyncHandler = require('express-async-handler');
 const PostModel = require('../models/postModel');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
-
+const { StatusCodes } = require('http-status-codes');
 // [GET] /api/v1/posts/get-all
 const GetPosts = asyncHandler(async (req, res) => {
     let { page, size, category, time, search } = req.query;
@@ -59,7 +59,7 @@ const GetPosts = asyncHandler(async (req, res) => {
 const GetPostById = asyncHandler(async (req, res) => {
     const post = await PostModel.findById(req.params.id).select('-updatedAt -__v').populate('author', 'fullName email');
     if (!post) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Post not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Post not found');
     }
     res.status(200).json({
         status: 'success',
@@ -94,7 +94,7 @@ const UpdatePost = asyncHandler(async (req, res) => {
     const title = req.body.title;
     const content = req.body.content;
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid post id');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid post id');
     }
 
     const post = await PostModel.findById(req.params.id);
@@ -109,20 +109,20 @@ const UpdatePost = asyncHandler(async (req, res) => {
             data: updatedPost,
         });
     } else {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Post not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Post not found');
     }
 });
 
 // [DELETE] /api/v1/posts/:id
 const DeletePost = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        throw new ApiError(statusCodes.BAD_REQUEST, 'Invalid post id');
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid post id');
     }
 
     const post = await PostModel.findById(req.params.id);
 
     if (!post) {
-        throw new ApiError(statusCodes.NOT_FOUND, 'Post not found');
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Post not found');
     }
 
     await post.deleteOne();

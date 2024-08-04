@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const UserModel = require('../models/userModel');
-const { uploadImage } = require('../utils');
+const { uploadImage } = require('../utils/cloudinary');
 const asyncHandler = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');

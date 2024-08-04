@@ -57,6 +57,7 @@ const eventSchema = new mongoose.Schema(
         distanceLimit: {
             type: Number,
             required: [true, 'Please enter your event distance limit'],
+            default: 0,
         },
         qrCodeUrl: {
             type: String,

@@ -19,6 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const routerConfig = require('./src/routes/index');
+const { destroyImage } = require('./src/utils/cloudinary');
 
 //middlewares
 app.use(express.json());

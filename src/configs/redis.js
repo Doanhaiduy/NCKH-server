@@ -10,7 +10,7 @@ const redisClient = createClient({
 });
 
 redisClient.on('connect', () => {
-    console.log('Connected to Redis');
+    console.log('Connect to Redis successfully');
 });
 
 const connectRedis = async () => {

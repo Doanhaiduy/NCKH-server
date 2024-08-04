@@ -7,6 +7,7 @@ const UsersRouter = require('./userRouter');
 const PostRouter = require('./postRouter');
 const RoleRouter = require('./roleRouter');
 const EventRouter = require('./eventRouter');
+const TrainingPointRouter = require('./trainingPointRouter');
 const AttendanceRouter = require('./attendanceRouter');
 
 const routerConfig = () => {
@@ -15,6 +16,7 @@ const routerConfig = () => {
     Router.use(ROUTES.EVENT.ROOT, EventRouter);
     Router.use(ROUTES.ATTENDANCE.ROOT, AttendanceRouter);
     Router.use(ROUTES.POST.ROOT, PostRouter);
+    Router.use(ROUTES.TRAINING_POINT.ROOT, TrainingPointRouter);
     Router.use(ROUTES.UTILS.ROOT, RoleRouter);
     return Router;
 };

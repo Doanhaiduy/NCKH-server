@@ -1,86 +1,82 @@
 const mongoose = require('mongoose');
 
-const trainingPointSchema = new mongoose.Schema(
+const criteriaSchema = new mongoose.Schema(
     {
-        trainingPointCode: {
+        level: {
+            type: Number,
+            enum: [1, 2, 3, 4],
+            required: true,
+        },
+        criteriaCode: String,
+        title: String,
+        description: String,
+        maxScore: Number,
+        totalScore: { type: Number, default: 0 },
+        evidenceType: {
             type: String,
-            required: [true, 'Please enter your training point code'],
-            trim: true,
+            enum: ['file', 'text', 'none'],
+            default: 'none',
         },
-        user: {
-            type: mongoose.Schema.ObjectId,
-            ref: 'User',
-            required: [true, 'Please enter your user'],
+        evidence: {
+            type: [mongoose.Schema.ObjectId],
+            ref: 'Response',
         },
-        semester: {
-            type: String,
-            required: [true, 'Please enter your semester'],
-        },
-
-        year: {
-            type: String,
-            required: [true, 'Please enter your year'],
-        },
-        criteria: [
+        subCriteria: [
             {
-                code: String,
-                title: String,
-                maxScore: Number,
-                userScore: {
-                    type: Number,
-                    default: 0,
-                },
-                subCriteria: [
-                    {
-                        code: String,
-                        title: String,
-                        maxScore: Number,
-                        evidenceType: {
-                            enum: ['file', 'text', 'none'],
-                            default: 'none',
-                        },
-                        evidence: {
-                            type: [mongoose.Schema.ObjectId],
-                            ref: 'Response',
-                        },
-
-                        userScore: {
-                            type: Number,
-                            default: 0,
-                        },
-                        subSubCriteria: [
-                            {
-                                code: String,
-                                title: String,
-                                maxScore: Number,
-                                evidence: {
-                                    type: [mongoose.Schema.ObjectId],
-                                    ref: 'Response',
-                                },
-                                userScore: {
-                                    type: Number,
-                                    default: 0,
-                                },
-                            },
-                        ],
-                    },
-                ],
+                type: mongoose.Schema.ObjectId,
+                ref: 'Criteria',
             },
         ],
-        status: {
-            type: String,
-            enum: ['pending', 'approved', 'rejected'],
-            default: 'pending',
-        },
     },
-
     {
         timestamps: true,
         versionKey: false,
     }
 );
 
-trainingPointSchema.index({ user: 1, level: 1 }, { unique: true });
+criteriaSchema.index({ _id: 1, level: 1 }, { unique: true });
+
+criteriaSchema.virtual('id').get(function () {
+    return this._id.toHexString();
+});
+
+criteriaSchema.set('toJSON', {
+    virtuals: true,
+});
+
+const CriteriaSchema = mongoose.model('Criteria', criteriaSchema);
+
+const trainingPointSchema = new mongoose.Schema(
+    {
+        user: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'User',
+            required: true,
+        },
+        semester: {
+            type: Number,
+            enum: [1, 2],
+            required: true,
+        },
+        year: {
+            type: Number,
+            required: true,
+        },
+        criteria: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Criteria',
+            },
+        ],
+        status: String,
+    },
+    {
+        timestamps: true,
+        versionKey: false,
+    }
+);
+
+trainingPointSchema.index({ user: 1, semester: 1, year: 1 }, { unique: true });
 
 trainingPointSchema.virtual('id').get(function () {
     return this._id.toHexString();
@@ -92,4 +88,7 @@ trainingPointSchema.set('toJSON', {
 
 const TrainingPointSchema = mongoose.model('TrainingPoint', trainingPointSchema);
 
-module.exports = TrainingPointSchema;
+module.exports = {
+    TrainingPointSchema,
+    CriteriaSchema,
+};

@@ -36,7 +36,7 @@ const attendanceSchema = new mongoose.Schema(
                 type: String,
                 required: [true, 'Please enter your location name'],
                 trim: true,
-                maxLength: [50, 'Your location name cannot exceed 50 characters'],
+                maxLength: [500, 'Your location name cannot exceed 500 characters'],
             },
         },
     },
