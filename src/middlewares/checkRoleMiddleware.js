@@ -6,7 +6,7 @@ const checkRole = (role) => {
         if (!req.user) {
             throw new ApiError(StatusCodes.UNAUTHORIZED, 'You are not authenticated');
         }
-        if (!role.includes(req.user.role)) {
+        if (!role.includes(req.user.typeRole)) {
             throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this route');
         }
         next();

@@ -18,15 +18,14 @@ const statusSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
 statusSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-statusSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const StatusSchema = mongoose.model('Status', statusSchema);

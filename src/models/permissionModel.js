@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const permissionSchema = new mongoose.Schema(
     {
+        permissionCode: {
+            type: String,
+            required: true,
+            unique: true,
+        },
         name: {
             type: String,
             required: true,
@@ -14,15 +19,14 @@ const permissionSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
 permissionSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-permissionSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const PermissionSchema = mongoose.model('Permission', permissionSchema);

@@ -310,7 +310,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
 // [POST] /api/v1/events/:id/check-in
 const CheckInEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    let { location, checkInAt, userId } = req.body;
+    let { location, checkInAt, userId, distance } = req.body;
     const event = await EventModel.findById(id);
     if (!checkInAt) {
         checkInAt = Date.now();
@@ -347,6 +347,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         user: userId,
         checkInAt,
         location,
+        distance: distance || 0,
     })
         .then((newAttendance) => {
             event.attendeesList.push(newAttendance._id);

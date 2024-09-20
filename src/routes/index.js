@@ -5,10 +5,11 @@ const Router = express.Router();
 const AuthRouter = require('./authRouter');
 const UsersRouter = require('./userRouter');
 const PostRouter = require('./postRouter');
-const RoleRouter = require('./roleRouter');
 const EventRouter = require('./eventRouter');
 const TrainingPointRouter = require('./trainingPointRouter');
 const AttendanceRouter = require('./attendanceRouter');
+const SClassRouter = require('./sClassRouter');
+const RoleRouter = require('./roleRouter');
 
 const routerConfig = () => {
     Router.use(ROUTES.AUTH.ROOT, AuthRouter);
@@ -17,7 +18,8 @@ const routerConfig = () => {
     Router.use(ROUTES.ATTENDANCE.ROOT, AttendanceRouter);
     Router.use(ROUTES.POST.ROOT, PostRouter);
     Router.use(ROUTES.TRAINING_POINT.ROOT, TrainingPointRouter);
-    Router.use(ROUTES.UTILS.ROOT, RoleRouter);
+    Router.use(ROUTES.SCLASS.ROOT, SClassRouter);
+    Router.use(ROUTES.ROLE.ROOT, RoleRouter);
     return Router;
 };
 

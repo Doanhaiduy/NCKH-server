@@ -1,5 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const UserModel = require('../models/userModel');
+const sClassSchema = require('../models/sclassModel');
+const RoleSchema = require('../models/roleModel');
 const { generalJwtAccessToken, generalJwtRefreshToken, refreshTokenService } = require('../utils/jwt');
 const { genOTP, handleSendMail } = require('../utils');
 const bcrypt = require('bcrypt');
@@ -14,25 +16,28 @@ const Login = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Username and password are required');
     }
 
-    const user = await UserModel.findOne({ username: req.body.username }).populate('role', 'name');
+    const user = await UserModel.findOne({ username: req.body.username }).select('+password').populate('role');
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     } else {
         const matchPassword = await bcrypt.compare(req.body.password, user.password);
+
         if (matchPassword) {
             const accessToken = generalJwtAccessToken({
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role.name,
+                typeRole: user.role.typeRole,
+                roleCode: user.role.roleCode,
             });
 
             const refreshToken = await generalJwtRefreshToken({
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role.name,
+                typeRole: user.role.typeRole,
+                roleCode: user.role.roleCode,
             });
 
             if (!refreshToken || !accessToken) {
@@ -82,12 +87,35 @@ const RefreshToken = asyncHandler(async (req, res) => {
 // [POST] /api/v1/auth/register
 const Register = asyncHandler(async (req, res) => {
     const hashPassword = await bcrypt.hash(req.body.password, 10);
+    if (!req.body.sclassName) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class name is required');
+    }
+    if (!req.body.role) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Role is required');
+    }
+
+    const hasClass = await sClassSchema.findOne({
+        sclassName: req.body.sclassName,
+    });
+
+    if (!hasClass) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class not found');
+    }
+    const hasRole = await RoleSchema.findOne({
+        roleCode: req.body.role,
+    });
+    if (!hasRole) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Role not found');
+    }
+
     const user = new UserModel({
         username: req.body.username,
         fullName: req.body.fullName,
         email: req.body.email,
         password: hashPassword,
         avatar: req.body.avatar,
+        role: hasRole._id,
+        sclassName: hasClass._id,
     });
     await user.save();
     res.status(201).json({
@@ -97,7 +125,8 @@ const Register = asyncHandler(async (req, res) => {
             fullName: user.fullName,
             email: user.email,
             avatar: user.avatar,
-            role: user.role,
+            role: hasRole.name,
+            sclassName: hasClass.sclassName,
         },
     });
 });

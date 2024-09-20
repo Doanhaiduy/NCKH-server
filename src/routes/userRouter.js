@@ -1,6 +1,6 @@
 const express = require('express');
 const Router = express.Router();
-const { GetUsers, getUserByIdOrUsername, UpdateUser } = require('../controllers/userController');
+const { GetUsers, getUserByIdOrUsername, UpdateUser, DeleteUser } = require('../controllers/userController');
 const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
 const ROLES = require('../constants/roles');
@@ -32,4 +32,6 @@ Router.post(
     UploadMultiple
 );
 Router.put(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], UpdateUser);
+Router.delete(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], DeleteUser);
+
 module.exports = Router;

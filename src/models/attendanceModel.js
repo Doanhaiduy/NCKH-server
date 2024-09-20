@@ -22,7 +22,10 @@ const attendanceSchema = new mongoose.Schema(
             enum: ['pending', 'approved', 'rejected'],
             default: 'pending',
         },
-
+        distance: {
+            type: Number,
+            required: [true, 'Please enter your distance'],
+        },
         location: {
             lat: {
                 type: Number,
@@ -43,6 +46,9 @@ const attendanceSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
@@ -50,10 +56,6 @@ attendanceSchema.index({ event: 1, user: 1 }, { unique: true });
 
 attendanceSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-attendanceSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const AttendanceSchema = mongoose.model('Attendance', attendanceSchema);

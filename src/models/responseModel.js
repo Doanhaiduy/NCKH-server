@@ -6,18 +6,17 @@ const responseSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your response name'],
             trim: true,
-            maxLength: [50, 'Your response name cannot exceed 50 characters'],
+            maxLength: [500, 'Your response name cannot exceed 50 characters'],
         },
+
         dataType: {
             type: String,
             required: [true, 'Please enter your response data type'],
             enum: ['text', 'file'],
         },
         data: {
-            type: String,
+            type: mongoose.Schema.Types.Mixed,
             required: [true, 'Please enter your response data'],
-            trim: true,
-            maxLength: [500, 'Your response data cannot exceed 500 characters'],
         },
         status: {
             type: String,
@@ -28,15 +27,14 @@ const responseSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
 responseSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-responseSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const ResponseSchema = mongoose.model('Response', responseSchema);

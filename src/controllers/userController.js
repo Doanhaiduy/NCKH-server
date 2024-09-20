@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const UserModel = require('../models/userModel');
+const ClassModel = require('../models/sclassModel');
 const { uploadImage } = require('../utils/cloudinary');
 const asyncHandler = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
@@ -72,11 +73,47 @@ const UpdateUser = asyncHandler(async (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
     const role = req.body.role;
+    const sclass = req.body.sclass;
+    const avatar = req.body.avatar;
 
-    if (!mongoose.Types.ObjectId.isValid(role)) {
+    if (role && !mongoose.Types.ObjectId.isValid(role)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid role id');
     }
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
+    }
+
+    if (sclass && !mongoose.Types.ObjectId.isValid(sclass)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid class id');
+    }
+
+    const user = await UserModel.findById(req.params.id);
+    if (!user) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    const classExist = await ClassModel.findById(sclass);
+    if (sclass && !classExist) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class not found');
+    }
+
+    if (password) {
+        user.password = await bcrypt.hash(req.body.password, 10);
+    }
+
+    user.fullName = fullName || user.fullName;
+    user.email = email || user.email;
+    user.role = role || user.role;
+    user.sclass = sclass || user.sclass;
+    user.avatar = avatar || user.avatar;
+
+    const updatedUser = await user.save();
+    res.status(200).json({ status: 'success', data: updatedUser });
+});
+
+// [DELETE] /api/v1/users/:id
+const DeleteUser = asyncHandler(async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
     }
@@ -87,16 +124,12 @@ const UpdateUser = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
-    if (password) {
-        user.password = await bcrypt.hash(req.body.password, 10);
-    }
+    await user.deleteOne();
 
-    user.fullName = fullName || user.fullName;
-    user.email = email || user.email;
-    user.role = role || user.role;
-
-    const updatedUser = await user.save();
-    res.status(200).json({ status: 'success', data: updatedUser });
+    res.status(200).json({
+        status: 'success',
+        message: 'User deleted successfully',
+    });
 });
 
 // [POST] /api/v1/utils/upload
@@ -148,4 +181,5 @@ module.exports = {
     UploadMultiple,
     getUserByIdOrUsername,
     UpdateUser,
+    DeleteUser,
 };

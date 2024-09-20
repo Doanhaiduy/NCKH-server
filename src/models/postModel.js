@@ -40,17 +40,14 @@ const postSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
-// postSchema.index({ title: 1 }, { unique: true });
-
-// postSchema.virtual('id').get(function () {
-//     return this._id.toHexString();
-// });
-
-postSchema.set('toJSON', {
-    virtuals: true,
+postSchema.virtual('id').get(function () {
+    return this._id.toHexString();
 });
 
 const PostSchema = mongoose.model('Post', postSchema);

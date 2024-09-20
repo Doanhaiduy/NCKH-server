@@ -1,0 +1,117 @@
+const asyncHandle = require('express-async-handler');
+const ClassSchema = require('../models/sclassModel');
+const UserSchema = require('../models/userModel');
+const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
+
+// [GET] /api/v1/classes/get-all
+const GetAllClasses = asyncHandle(async (req, res) => {
+    const classes = await ClassSchema.find().populate('teacher', 'fullName email');
+    res.status(200).json({
+        status: 'success',
+        data: classes,
+    });
+});
+
+// [GET] /api/v1/classes/:id
+const GetClassById = asyncHandle(async (req, res) => {
+    const classId = req.params.id;
+    const classDetail = await ClassSchema.findById(classId).populate('teacher', 'fullName email');
+
+    if (!classDetail) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+    }
+
+    res.status(200).json({
+        status: 'success',
+        data: classDetail,
+    });
+});
+
+// [POST] /api/v1/classes/create
+const CreateClass = asyncHandle(async (req, res) => {
+    if (!req.body.name) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Name is required');
+    }
+
+    let hasTeacher;
+
+    if (req.body.teacher) {
+        hasTeacher = await User.findOne({ _id: req.body.teacher, role: 'teacher' });
+
+        if (!hasTeacher) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Teacher does not exist');
+        }
+    }
+
+    const hasClass = await ClassSchema.findOne({ name: req.body.name });
+    if (hasClass) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class has already existed');
+    }
+
+    const newClass = new ClassSchema({
+        sclassName: req.body.name,
+        teacher: hasTeacher ? hasTeacher._id : null,
+    });
+
+    await newClass.save();
+
+    res.status(201).json({
+        status: 'success',
+        data: newClass,
+    });
+});
+
+// [PUT] /api/v1/classes/update/:id
+const UpdateClassById = asyncHandle(async (req, res) => {
+    const classId = req.params.id;
+    const classDetail = await ClassSchema.findById(classId);
+
+    if (!classDetail) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+    }
+
+    if (req.body.name) {
+        classDetail.name = req.body.name;
+    }
+
+    if (req.body.teacher) {
+        const hasTeacher = await UserSchema.findOne({ _id: req.body.teacher });
+        if (!hasTeacher) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Teacher does not exist');
+        }
+        classDetail.teacher = hasTeacher._id;
+    }
+
+    await classDetail.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: classDetail,
+    });
+});
+
+// [DELETE] /api/v1/classes/:id
+const DeleteClassById = asyncHandle(async (req, res) => {
+    const classId = req.params.id;
+    const classDetail = await ClassSchema.findById(classId);
+
+    if (!classDetail) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+    }
+
+    await classDetail.remove();
+
+    res.status(200).json({
+        status: 'success',
+        data: {},
+    });
+});
+
+module.exports = {
+    GetAllClasses,
+    GetClassById,
+    UpdateClassById,
+    DeleteClassById,
+    CreateClass,
+};

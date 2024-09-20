@@ -32,6 +32,21 @@ const eventSchema = new mongoose.Schema(
             type: Number,
             required: [true, 'Please enter your event max attendees'],
         },
+        type: {
+            // name: {
+            //     type: String,
+            //     required: [true, 'Please enter your event type name'],
+            //     trim: true,
+            //     maxLength: [50, 'Your event type name cannot exceed 50 characters'],
+            // },
+            // description: {
+            //     type: String,
+            //     required: [true, 'Please enter your event type description'],
+            //     trim: true,
+            //     maxLength: [500, 'Your event type description cannot exceed 500 characters'],
+            // },
+            // add 1 Model category type event : ['....']
+        },
         thumbnail: {
             type: String,
             default:
@@ -88,6 +103,9 @@ const eventSchema = new mongoose.Schema(
     {
         timestamps: true,
         versionKey: false,
+        toJSON: {
+            virtuals: true,
+        },
     }
 );
 
@@ -95,10 +113,6 @@ eventSchema.index({ eventCode: 1 }, { unique: true });
 
 eventSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-eventSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const EventSchema = mongoose.model('Event', eventSchema);

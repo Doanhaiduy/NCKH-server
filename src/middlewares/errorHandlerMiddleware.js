@@ -1,7 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
 
 const errorHandlerMiddleware = (err, req, res, next) => {
-    console.log('err', err.name);
     let errors = {};
     if (!err.statusCode) err.statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
     if (err.name === 'MongoServerError' && err.code === 11000) {

@@ -21,13 +21,14 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your fullName'],
             trim: true,
-            maxLength: [30, 'Your name cannot exceed 30 characters'],
+            maxLength: [100, 'Your name cannot exceed 100 characters'],
         },
         email: {
             type: String,
             required: [true, 'Please enter your email'],
             unique: true,
             trim: true,
+            lowercase: true,
             maxLength: [50, 'Your email cannot exceed 50 characters'],
             validate: {
                 validator: function (v) {
@@ -42,38 +43,30 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your password'],
             minLength: [6, 'Your password must be at least 6 characters'],
-            // select: false,
+            select: false,
+        },
+        sclassName: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Class',
+            required: [true, 'Please enter your class'],
         },
         avatar: {
             type: String,
-            default: 'https://res.cloudinary.com/dbnoomvgm/image/upload/v1719851707/NCKH/xw6ovct05dhrahgbebdc.jpg',
+            default: 'https://cdn.icon-icons.com/icons2/1378/PNG/512/avatardefault_92824.png',
         },
         role: {
             type: mongoose.Schema.ObjectId,
             ref: 'Role',
-            default: '6694f83a1a2e4d691b74f1b2',
             required: [true, 'Please enter your role'],
         },
-        createdAt: {
-            type: Date,
-            default: Date.now,
-        },
-        updatedAt: {
-            type: Date,
-            default: Date.now,
-        },
     },
-    { timestamps: true }
+    { timestamps: true, versionKey: false }
 );
 
 userSchema.index({ username: 1 }, { unique: true });
 
 userSchema.virtual('id').get(function () {
     return this._id.toHexString();
-});
-
-userSchema.set('toJSON', {
-    virtuals: true,
 });
 
 const UserSchema = mongoose.model('User', userSchema);
