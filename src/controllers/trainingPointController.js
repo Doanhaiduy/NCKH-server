@@ -102,33 +102,6 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 const GetTrainingPointById = asyncHandle(async (req, res) => {
     const { id } = req.params;
 
-    // const trainingPoint = await TrainingPointSchema.findById(id)
-    //     .populate({
-    //         path: 'criteria',
-    //         populate: {
-    //             path: 'subCriteria',
-    //             populate: {
-    //                 path: 'subCriteria',
-    //                 populate: {
-    //                     path: 'evidence',
-    //                     model: 'Response',
-    //                     select: '_id name data',
-    //                 },
-    //             },
-    //         },
-    //     })
-    //     .populate({
-    //         path: 'criteria',
-    //         populate: {
-    //             path: 'subCriteria',
-    //             populate: {
-    //                 path: 'evidence',
-    //                 model: 'Response',
-    //                 select: '_id name data',
-    //             },
-    //         },
-    //     });
-
     const trainingPoint = await TrainingPointSchema.findById(id)
         .select('-updatedAt -createdAt')
         .populate({
@@ -201,7 +174,7 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
 
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: trainingPoints[0] ?? 'not found data',
+        data: trainingPoints[0],
     });
 });
 
@@ -311,9 +284,9 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria does not require evidence');
     }
 
-    if (criteria.evidence.length > 0) {
-        await ResponseSchema.deleteMany({ _id: { $in: criteria.evidence } });
-        criteria.evidence = [];
+    if (criteria.evidence) {
+        await ResponseSchema.deleteOne({ _id: criteria.evidence });
+        criteria.evidence = null;
     }
 
     if (criteria.evidenceType === 'file') {
@@ -331,10 +304,9 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
             name: `Minh chứng cho tiêu chí ${criteria.criteriaCode}`,
             dataType: 'file',
             data: files,
-            criteria: criteriaId,
         });
 
-        criteria.evidence = [...criteria.evidence, response._id];
+        criteria.evidence = response._id;
     }
 
     if (criteria.evidenceType === 'text') {
@@ -347,7 +319,7 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
             dataType: 'text',
             data: evidence,
         });
-        criteria.evidence = [...criteria.evidence, response._id];
+        criteria.evidence = response._id;
     }
 
     await criteria.save();

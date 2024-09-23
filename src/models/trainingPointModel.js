@@ -51,6 +51,7 @@ const criteriaSchema = new mongoose.Schema(
             // },
             type: mongoose.Schema.ObjectId,
             ref: 'Response',
+            default: null,
         },
         subCriteria: [
             {

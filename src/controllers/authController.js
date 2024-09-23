@@ -131,8 +131,8 @@ const Register = asyncHandler(async (req, res) => {
     });
 });
 
-// [POST] /api/v1/auth/send-reset-password-email
-const SendResetPasswordEmail = asyncHandler(async (req, res) => {
+// [POST] /api/v1/auth/forgot-password
+const ForgotPassword = asyncHandler(async (req, res) => {
     if (!req.body.email) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Email is required');
     }
@@ -144,6 +144,7 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
     }
 
     const otp = genOTP();
+    const otpExpire = Date.now() + 60000;
 
     const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -154,13 +155,19 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
 
     const result = await handleSendMail(mailOptions);
 
+    await findUser.updateOne({
+        otp,
+        otpExpire,
+        isVerifiedOtp: false,
+    });
+
     if (result === 'OK') {
         res.status(200).json({
             status: 'success',
             data: {
                 email: req.body.email,
                 otp,
-                expiredIn: Date.now() + 30000,
+                expiredIn: otpExpire,
             },
         });
     } else {
@@ -168,22 +175,31 @@ const SendResetPasswordEmail = asyncHandler(async (req, res) => {
     }
 });
 
-// [POST] /api/v1/auth/reset-password
-const ResetPassword = asyncHandler(async (req, res) => {
-    if (!req.body.email || !req.body.newPassword) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and new password are required');
+// [POST] /api/v1/auth/verify-otp
+
+const VerifyOTP = asyncHandler(async (req, res) => {
+    if (!req.body.email || !req.body.otp) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and OTP are required');
     }
 
     const findUser = await UserModel.findOne({ email: req.body.email });
-
-    const hashPassword = await bcrypt.hash(req.body.newPassword, 10);
 
     if (!findUser) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
+    if (findUser.otp !== req.body.otp) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'OTP is incorrect');
+    }
+
+    if (findUser.otpExpire < Date.now()) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'OTP is expired');
+    }
+
     await findUser.updateOne({
-        password: hashPassword,
+        otp: null,
+        otpExpire: null,
+        isVerifiedOtp: true,
     });
 
     res.status(200).json({
@@ -194,13 +210,48 @@ const ResetPassword = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/auth/reset-password
+const ResetPassword = asyncHandler(async (req, res) => {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'You must provide email and new password');
+    }
+
+    const findUser = await UserModel.findOne({ email: req.body.email });
+
+    if (!findUser) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    if (findUser.isVerifiedOtp === false) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'User is not verified');
+    }
+
+    const hashPassword = await bcrypt.hash(req.body.newPassword, 10);
+
+    await findUser.updateOne({
+        password: hashPassword,
+        passwordChangedAt: Date.now(),
+        isVerifiedOtp: false,
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            email: req.body.email,
+        },
+    });
+});
+
+//
+
 // [POST] /api/v1/auth/change-password
 const ChangePassword = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.oldPassword || !req.body.newPassword) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Email, old password and new password are required');
     }
 
-    const findUser = await UserModel.findOne({ email: req.body.email });
+    const findUser = await UserModel.findOne({ email: req.body.email }).select('+password');
 
     const matchPassword = await bcrypt.compare(req.body.oldPassword, findUser.password);
 
@@ -257,7 +308,8 @@ const Logout = asyncHandler(async (req, res) => {
 module.exports = {
     Login,
     Register,
-    SendResetPasswordEmail,
+    ForgotPassword,
+    VerifyOTP,
     ResetPassword,
     ChangePassword,
     RefreshToken,

@@ -59,6 +59,22 @@ const userSchema = new mongoose.Schema(
             ref: 'Role',
             required: [true, 'Please enter your role'],
         },
+        otp: {
+            type: String,
+            default: null,
+        },
+        otpExpire: {
+            type: Date,
+            default: null,
+        },
+        passwordChangedAt: {
+            type: Date,
+            default: null,
+        },
+        isVerifiedOtp: {
+            type: Boolean,
+            default: false,
+        },
     },
     { timestamps: true, versionKey: false }
 );
