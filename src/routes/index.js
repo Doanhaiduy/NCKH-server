@@ -10,6 +10,7 @@ const TrainingPointRouter = require('./trainingPointRouter');
 const AttendanceRouter = require('./attendanceRouter');
 const SClassRouter = require('./sClassRouter');
 const RoleRouter = require('./roleRouter');
+const NotificationRouter = require('./notificationRouter');
 
 const routerConfig = () => {
     Router.use(ROUTES.AUTH.ROOT, AuthRouter);
@@ -20,6 +21,7 @@ const routerConfig = () => {
     Router.use(ROUTES.TRAINING_POINT.ROOT, TrainingPointRouter);
     Router.use(ROUTES.SCLASS.ROOT, SClassRouter);
     Router.use(ROUTES.ROLE.ROOT, RoleRouter);
+    Router.use(ROUTES.NOTIFICATION.ROOT, NotificationRouter);
     return Router;
 };
 

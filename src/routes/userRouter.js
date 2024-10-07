@@ -9,6 +9,7 @@ const { GetAttendancesByUser } = require('../controllers/eventController');
 const { GetTrainingPointsByUserId } = require('../controllers/trainingPointController');
 const upload = require('../configs/multer');
 const { UploadSingle, UploadMultiple } = require('../controllers/userController');
+const { GetUserNotifications } = require('../controllers/notificationController');
 
 Router.get(ROUTES.USER.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetUsers);
 Router.get(ROUTES.USER.GET_ATTENDANCE, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetAttendancesByUser);
@@ -18,6 +19,7 @@ Router.get(
     GetTrainingPointsByUserId
 );
 Router.get(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.USER])], getUserByIdOrUsername);
+Router.get(ROUTES.USER.GET_NOTIFICATIONS, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetUserNotifications);
 
 Router.post(
     ROUTES.USER.UPLOAD,

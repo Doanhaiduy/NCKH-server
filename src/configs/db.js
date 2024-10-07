@@ -12,7 +12,9 @@ mongoose.Schema.defaultOptions = defaultOptions;
 
 const connectDB = async () => {
     try {
-        const connect = await mongoose.connect(process.env.MONGO_URI_LOCAL);
+        const DB_URI =
+            process.env.NODE_ENV === 'development' ? process.env.MONGO_URI_LOCAL : process.env.MONGO_URI_PRODUCTION;
+        const connect = await mongoose.connect(DB_URI);
         console.log(`Connect to database successfully`);
     } catch (error) {
         console.error(`Error: ${error.message}`);

@@ -14,22 +14,6 @@ const criteriaSchema = new mongoose.Schema(
         description: String,
         maxScore: Number,
         totalScore: {
-            // điểm trường đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore1: {
-            // điểm sinh viên tự đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore2: {
-            // điểm lớp đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore3: {
-            // điểm đơn vị đánh giá
             type: Number,
             default: 0,
         },
@@ -40,15 +24,6 @@ const criteriaSchema = new mongoose.Schema(
             default: 'none',
         },
         evidence: {
-            // validate: {
-            //     validator: function (v) {
-            //         if (this.evidenceType === 'none') return true;
-            //         if (this.evidenceType === 'file' && v.length === 0) return false;
-            //         if (this.evidenceType === 'text' && v.length === 0 && typeof v !== 'string') return false;
-            //         return true;
-            //     },
-            //     message: 'Evidence is required',
-            // },
             type: mongoose.Schema.ObjectId,
             ref: 'Response',
             default: null,
@@ -68,8 +43,6 @@ const criteriaSchema = new mongoose.Schema(
         },
     }
 );
-
-criteriaSchema.index({ _id: 1, level: 1 }, { unique: true });
 
 criteriaSchema.virtual('id').get(function () {
     return this._id.toHexString();
@@ -180,22 +153,6 @@ const trainingPointSchema = new mongoose.Schema(
             },
         ],
         totalScore: {
-            // điểm trường đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore1: {
-            // điểm sinh viên tự đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore2: {
-            // điểm lớp đánh giá
-            type: Number,
-            default: 0,
-        },
-        totalScore3: {
-            // điểm đơn vị đánh giá
             type: Number,
             default: 0,
         },

@@ -332,7 +332,7 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
 
 //[PUT] /api/v1/training-point/:criteriaId/update-multiple-criteria-evidence
 
-//[GET] /api/v1/training-point/:criteriaId/get-criteria-evidence
+//[GET] /api/v1/training-point/:criteriaId/criteria-evidence
 const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     const { criteriaId } = req.params;
 
@@ -344,10 +344,6 @@ const GetCriteriaEvidence = asyncHandle(async (req, res) => {
 
     if (criteria.evidenceType === 'none') {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria does not require evidence');
-    }
-
-    if (criteria.evidence.length === 0) {
-        throw new ApiError(StatusCodes.NOT_FOUND, 'No evidence found');
     }
 
     res.status(StatusCodes.OK).json({

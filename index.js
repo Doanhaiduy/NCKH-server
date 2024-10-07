@@ -37,5 +37,5 @@ app.use(errorHandlerMiddleware);
 
 //listen
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}: http://localhost:${PORT}`);
+    console.log(`Server is running on port ${PORT}: http://localhost:${PORT} | ${process.env.NODE_ENV}`);
 });

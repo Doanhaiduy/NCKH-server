@@ -21,16 +21,6 @@ const ROUTES = Object.freeze({
         GET_ALL_ADMINISTRATORS: '/:id/administrators',
         GET_ALL_TRAINING_POINTS: '/:id/training-points',
     },
-
-    MANAGER: {
-        ROOT: '/managers',
-        GET_ALL: '/get-all',
-        ID: '/:id',
-        CREATE: '/',
-        UPDATE: '/:id',
-        GET_ALL_STUDENTS: '/:id/students',
-    },
-
     ROLE: {
         ROOT: '/roles',
         GET_ALL: '/get-all',
@@ -56,6 +46,7 @@ const ROUTES = Object.freeze({
         ID: '/:id',
         UPLOAD: '/upload',
         UPLOAD_MULTIPLE: '/upload-multiple',
+        GET_NOTIFICATIONS: '/:id/notifications',
     },
 
     POST: {
@@ -93,7 +84,15 @@ const ROUTES = Object.freeze({
         UPDATE_MULTIPLE_CRITERIA_EVIDENCE: '/:criteriaId/update-multiple-criteria-evidence',
         GET_CRITERIA_EVIDENCE: '/:criteriaId/criteria-evidence',
     },
-
+    NOTIFICATION: {
+        ROOT: '/notifications',
+        GET_ALL: '/get-all',
+        ID: '/:id',
+        CREATE: '/',
+        UPDATE: '/:id',
+        DELETE: '/:id',
+        READ: '/:id/read/:userId',
+    },
     UTILS: {
         ROOT: '/utils',
         SET_NEW_ROLE: '/set-new-role',

@@ -1,0 +1,189 @@
+const asyncHandle = require('express-async-handler');
+const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
+const NotificationModel = require('../models/notificationModel');
+const UserModel = require('../models/userModel');
+
+// [GET] /api/v1/notifications/get-all
+const GetAllNotifications = asyncHandle(async (req, res) => {
+    let { page, size, time, search } = req.query;
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const query = {};
+    const currentDate = new Date();
+
+    const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+
+    const total_documents = await NotificationModel.countDocuments(query);
+
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size);
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            notifications,
+        },
+    });
+});
+
+// [GET] /api/v1/notifications/:id
+const GetNotificationById = asyncHandle(async (req, res) => {
+    const notification = await NotificationModel.findById(req.params.id);
+
+    if (!notification) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
+    }
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: notification,
+    });
+});
+
+// [GET] /api/v1/users/:id/notifications
+const GetUserNotifications = asyncHandle(async (req, res) => {
+    const { id } = req.params;
+    const user = await UserModel.findById(id);
+
+    if (!user) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    const notifications = await NotificationModel.find({ receiver: id })
+        .sort({ createdAt: -1 })
+        .select('-receiver -updatedAt -__v');
+
+    const result = notifications.map((notification) => {
+        const isRead = notification.readBy.some((reader) => reader.readerId.toString() === id);
+        return {
+            ...notification._doc,
+            isRead,
+            readBy: undefined,
+        };
+    });
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: result,
+    });
+});
+
+// [POST] /api/v1/notifications
+const CreateNotification = asyncHandle(async (req, res) => {
+    const { sender, receiver, message, type } = req.body;
+
+    if (!sender || !receiver || !message || !type) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Please fill all the fields');
+    }
+
+    const notification = new NotificationModel({
+        sender,
+        receiver,
+        message,
+        type,
+    });
+
+    await notification.save();
+
+    res.status(StatusCodes.CREATED).json({
+        status: 'success',
+        data: notification,
+    });
+});
+
+// [PUT] /api/v1/notifications/:id
+const UpdateNotification = asyncHandle(async (req, res) => {
+    const { sender, receiver, message, type } = req.body;
+    const notification = await NotificationModel.findById(req.params.id);
+
+    if (!notification) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
+    }
+
+    notification.sender = sender || notification.sender;
+    notification.receiver = receiver || notification.receiver;
+    notification.message = message || notification.message;
+    notification.type = type || notification.type;
+
+    await notification.save();
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: notification,
+    });
+});
+
+// [PUT] /api/v1/notifications/:id/read/:userId
+const ReadNotification = asyncHandle(async (req, res) => {
+    const { id, userId } = req.params;
+    const notification = await NotificationModel.findById(id);
+
+    if (!notification) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
+    }
+
+    const user = UserModel.findById(userId);
+    if (!user) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    // receiver is array of user ids
+    const isReceiver = notification.receiver.some((receiver) => receiver.toString() === userId);
+    if (!isReceiver) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'User is not a receiver of this notification');
+    }
+
+    const isRead = notification.readBy.some((reader) => reader.readerId.toString() === userId);
+    if (isRead) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Notification already read');
+    }
+
+    notification.readBy.push({ readerId: userId, readAt: Date.now() });
+    console.log('====BUG====', notification);
+
+    await notification.save();
+
+    // console.log('====BUG====', notification, userId);
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: notification,
+    });
+});
+
+// [DELETE] /api/v1/notifications/:id
+const DeleteNotification = asyncHandle(async (req, res) => {
+    const notification = await NotificationModel.findById(req.params.id);
+
+    if (!notification) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
+    }
+
+    await notification.remove();
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: {
+            message: 'Notification deleted successfully',
+        },
+    });
+});
+
+module.exports = {
+    GetAllNotifications,
+    GetNotificationById,
+    CreateNotification,
+    UpdateNotification,
+    DeleteNotification,
+    ReadNotification,
+    GetUserNotifications,
+};

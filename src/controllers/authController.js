@@ -176,7 +176,6 @@ const ForgotPassword = asyncHandler(async (req, res) => {
 });
 
 // [POST] /api/v1/auth/verify-otp
-
 const VerifyOTP = asyncHandler(async (req, res) => {
     if (!req.body.email || !req.body.otp) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Email and OTP are required');
@@ -242,8 +241,6 @@ const ResetPassword = asyncHandler(async (req, res) => {
         },
     });
 });
-
-//
 
 // [POST] /api/v1/auth/change-password
 const ChangePassword = asyncHandler(async (req, res) => {
