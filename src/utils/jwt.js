@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { redisClient } = require('../configs/redis');
 const ApiError = require('./ApiError');
 const { StatusCodes } = require('http-status-codes');
-const { use } = require('../routes/authRouter');
 
 const generalJwtAccessToken = (data) => {
     return jwt.sign(data, process.env.JWT_ACCESS_TOKEN_SECRET, {
@@ -31,6 +30,8 @@ const refreshTokenService = async (token) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_TOKEN_SECRET);
 
+        const timeExpire = await redisClient.ttl(decoded.id.toString());
+
         const refreshToken = await redisClient.get(decoded.id.toString());
 
         if (decoded && token === refreshToken) {
@@ -41,7 +42,28 @@ const refreshTokenService = async (token) => {
                 typeRole: decoded.typeRole,
                 roleCode: decoded.roleCode,
             });
-            return newAccessToken;
+
+            const newRefreshToken = await generalJwtRefreshToken({
+                id: decoded.id,
+                username: decoded.username,
+                email: decoded.email,
+                typeRole: decoded.typeRole,
+                roleCode: decoded.roleCode,
+            });
+
+            if (!newAccessToken || !newRefreshToken) {
+                return null;
+            }
+            await redisClient.del(decoded.id.toString());
+
+            await redisClient.set(decoded.id.toString(), newRefreshToken, {
+                EX: timeExpire,
+            });
+
+            return {
+                newAccessToken,
+                newRefreshToken,
+            };
         }
 
         return null;

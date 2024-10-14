@@ -79,7 +79,7 @@ const GetUserNotifications = asyncHandle(async (req, res) => {
 
 // [POST] /api/v1/notifications
 const CreateNotification = asyncHandle(async (req, res) => {
-    const { sender, receiver, message, type } = req.body;
+    const { sender, receiver, message, type, description } = req.body;
 
     if (!sender || !receiver || !message || !type) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Please fill all the fields');
@@ -90,6 +90,7 @@ const CreateNotification = asyncHandle(async (req, res) => {
         receiver,
         message,
         type,
+        description,
     });
 
     await notification.save();

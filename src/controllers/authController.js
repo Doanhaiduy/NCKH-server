@@ -44,6 +44,11 @@ const Login = asyncHandler(async (req, res) => {
                 throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Generate token failed');
             }
 
+            const sclass = await sClassSchema.findById(user.sclassName);
+            if (!sclass) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+            }
+
             res.status(200).json({
                 status: 'success',
                 data: {
@@ -55,6 +60,7 @@ const Login = asyncHandler(async (req, res) => {
                     role: user.role.name,
                     accessToken,
                     refreshToken,
+                    sclassName: sclass.sclassName,
                 },
             });
         } else {
@@ -72,14 +78,17 @@ const RefreshToken = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }
 
-    const newAccessToken = await refreshTokenService(refreshToken);
-    if (!newAccessToken) {
+    const data = await refreshTokenService(refreshToken);
+
+    if ((!data?.newAccessToken, !data?.newRefreshToken)) {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Generate token failed');
     }
+
     res.json({
         message: 'Refresh token successfully',
         data: {
-            accessToken: newAccessToken,
+            accessToken: data.newAccessToken,
+            refreshToken: data.newRefreshToken,
         },
     });
 });
@@ -280,7 +289,8 @@ const ChangePassword = asyncHandler(async (req, res) => {
 
 // [POST] /api/v1/auth/logout
 const Logout = asyncHandler(async (req, res) => {
-    const refreshToken = req.headers.token.split(' ')[1];
+    const AccessToken = req.headers.token;
+    const refreshToken = req.headers.refresh_token.split(' ')[1];
 
     if (!refreshToken) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
@@ -292,6 +302,12 @@ const Logout = asyncHandler(async (req, res) => {
         decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET);
     } catch (error) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid token');
+    }
+
+    const refreshTokenStorage = await redisClient.get(decoded.id.toString());
+
+    if (refreshToken !== refreshTokenStorage) {
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid token');
     }
 
     await redisClient.del(decoded.id.toString());

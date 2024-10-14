@@ -3,6 +3,7 @@ const PostModel = require('../models/postModel');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+
 // [GET] /api/v1/posts/get-all
 const GetPosts = asyncHandler(async (req, res) => {
     let { page, size, category, time, search } = req.query;
@@ -21,22 +22,13 @@ const GetPosts = asyncHandler(async (req, res) => {
     if (search) {
         query.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
     }
-
-    // if (time === 'past') {
-    //     query.endDate = { $lt: currentDate };
-    // } else if (time === 'ongoing') {
-    //     query.startDate = { $lte: currentDate };
-    //     query.endDate = { $gte: currentDate };
-    // } else if (time === 'upcoming') {
-    //     query.startDate = { $gt: currentDate };
-    // }
-
     const posts = await PostModel.find(query)
         .select('-content -status  -updatedAt -__v')
         .populate('author', 'fullName email')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip);
+
     const total_documents = await PostModel.countDocuments(query);
 
     const previous_pages = page - 1;

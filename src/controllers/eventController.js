@@ -55,12 +55,12 @@ const GetEvents = asyncHandler(async (req, res) => {
     }
 
     if (time === 'past') {
-        query.endDate = { $lt: currentDate };
+        query.endAt = { $lt: currentDate };
     } else if (time === 'ongoing') {
-        query.startDate = { $lte: currentDate };
-        query.endDate = { $gte: currentDate };
+        query.startAt = { $lte: currentDate };
+        query.endAt = { $gte: currentDate };
     } else if (time === 'upcoming') {
-        query.startDate = { $gt: currentDate };
+        query.startAt = { $gt: currentDate };
     }
 
     if (search) {
@@ -146,6 +146,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
         }
     }
 
+    // giảm dữ liệu truyền vào
     const qrCodeUrl = await createQRCode({
         eventCode,
         name,
