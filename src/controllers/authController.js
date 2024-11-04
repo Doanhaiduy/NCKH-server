@@ -49,6 +49,9 @@ const Login = asyncHandler(async (req, res) => {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
             }
 
+            user.expoPushToken = req.body.expoPushToken || user.expoPushToken;
+            await user.save();
+
             res.status(200).json({
                 status: 'success',
                 data: {
@@ -309,6 +312,10 @@ const Logout = asyncHandler(async (req, res) => {
     if (refreshToken !== refreshTokenStorage) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid token');
     }
+
+    const user = await UserModel.findById(decoded.id);
+    user.expoPushToken = null;
+    await user.save();
 
     await redisClient.del(decoded.id.toString());
 

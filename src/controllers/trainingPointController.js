@@ -6,7 +6,7 @@ const { TrainingPointSchema, CriteriaSchema } = require('../models/trainingPoint
 const criteriaList = require('../mocks/criteriaList');
 const mongoose = require('mongoose');
 const ResponseSchema = require('../models/responseModel');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, destroyImageByPublicId } = require('../utils/cloudinary');
 
 const createCriteriaTree = async (criteriaList) => {
     const criteriaMap = {};
@@ -285,6 +285,15 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
     }
 
     if (criteria.evidence) {
+        if (criteria.evidenceType === 'file') {
+            const evidence = await ResponseSchema.findById(criteria.evidence);
+            if (evidence) {
+                for (const file of evidence.data) {
+                    await destroyImageByPublicId(file.public_id);
+                }
+            }
+        }
+
         await ResponseSchema.deleteOne({ _id: criteria.evidence });
         criteria.evidence = null;
     }
@@ -296,7 +305,7 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
 
         let files = [];
         for (const file of req.files) {
-            const upload = await uploadImage(file, null);
+            const upload = await uploadImage(file, 'evidence');
             files.push(upload);
         }
 

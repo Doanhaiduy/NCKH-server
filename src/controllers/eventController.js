@@ -4,17 +4,17 @@ const AttendanceModel = require('../models/attendanceModel');
 const UserModel = require('../models/userModel');
 const PostModel = require('../models/postModel');
 const QRCode = require('qrcode');
-const { encryptData } = require('../utils');
-const { uploadQRBase64, destroyImage } = require('../utils/cloudinary');
+const { encryptData, decryptData } = require('../utils');
+const { uploadQRBase64, destroyImageByUrl } = require('../utils/cloudinary');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+const { createCanvas, loadImage } = require('canvas');
 
 const createQRCode = async (data) => {
     if (!data) return null;
     try {
-        const jsonData = JSON.stringify(data);
-        const encryptedData = encryptData(jsonData);
+        const { encryptedData, iv } = encryptData(data);
 
         let qrBase64 = await QRCode.toDataURL(
             JSON.stringify({
@@ -25,15 +25,34 @@ const createQRCode = async (data) => {
                 errorCorrectionLevel: 'H',
                 margin: 1,
                 color: {
-                    dark: '#000',
+                    dark: '#0c339c',
                     light: '#fff',
                 },
             }
         );
+        const qrImage = await loadImage(qrBase64);
+        const logoImage = await loadImage('https://i.ibb.co/T8gKWff/adaptive-icon.png');
 
-        const qrCodeUrl = await uploadQRBase64(qrBase64);
+        const canvas = createCanvas(qrImage.width, qrImage.height);
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(qrImage, 0, 0, qrImage.width, qrImage.height);
+
+        const logoSize = qrImage.width * 0.4; // 40% of the QR code size
+        const logoX = (qrImage.width - logoSize) / 2;
+        const logoY = (qrImage.height - logoSize) / 2;
+
+        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+
+        const finalQRCodeBase64 = canvas.toDataURL();
+
+        const qrCodeUrl = await uploadQRBase64(finalQRCodeBase64, data.eventCode);
         console.log('qrCodeUrl', qrCodeUrl);
-        return qrCodeUrl;
+
+        return {
+            qrCodeUrl,
+            iv,
+        };
     } catch (error) {
         console.log('error', error);
     }
@@ -146,15 +165,10 @@ const CreateEvent = asyncHandler(async (req, res) => {
         }
     }
 
-    // giảm dữ liệu truyền vào
-    const qrCodeUrl = await createQRCode({
+    const { qrCodeUrl, iv } = await createQRCode({
         eventCode,
-        name,
-        location,
-        distanceLimit,
-        startAt,
-        endAt,
-        maxAttendees,
+        startAt: new Date(startAt).getTime(),
+        endAt: new Date(endAt).getTime(),
     });
 
     const event = new EventModel({
@@ -170,6 +184,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
         author,
         post,
         thumbnail,
+        iv,
     });
 
     const createdEvent = await event.save();
@@ -198,9 +213,15 @@ const UpdateEvent = asyncHandler(async (req, res) => {
 
     const event = await EventModel.findById(req.params.id);
 
-    if (!name && !description && !startAt && !endAt && !maxAttendees && !location && distanceLimit === undefined) {
+    if (!startAt && !endAt) {
         event.thumbnail = thumbnail || event.thumbnail;
         event.post = post || event.post;
+        event.name = name || event.name;
+        event.description = description || event.description;
+        event.maxAttendees = maxAttendees || event.maxAttendees;
+        event.location = location || event.location;
+        event.distanceLimit = distanceLimit === undefined ? event.distanceLimit : distanceLimit;
+
         const updatedEvent = await event.save();
         return res.status(200).json({
             status: 'success',
@@ -214,20 +235,16 @@ const UpdateEvent = asyncHandler(async (req, res) => {
 
     const newEventCode = 'EVENT-' + Date.now();
 
-    const result = await destroyImage(event.qrCodeUrl);
+    const result = await destroyImageByUrl(event.qrCodeUrl);
 
     if (result.result !== 'ok') {
         throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Delete old QR code failed');
     }
 
-    const qrCodeUrl = await createQRCode({
+    const { qrCodeUrl, iv } = await createQRCode({
         eventCode: newEventCode,
-        name: name || event.name,
-        location: location || event.location,
-        distanceLimit: distanceLimit === undefined ? event.distanceLimit : distanceLimit,
-        startAt: startAt || event.startAt,
-        endAt: endAt || event.endAt,
-        maxAttendees: maxAttendees || event.maxAttendees,
+        startAt: new Date(startAt).getTime(),
+        endAt: new Date(endAt).getTime(),
     });
 
     event.eventCode = newEventCode;
@@ -241,6 +258,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     event.qrCodeUrl = qrCodeUrl || event.qrCodeUrl;
     event.thumbnail = thumbnail || event.thumbnail;
     event.post = post || event.post;
+    event.iv = iv || event.iv;
 
     const updatedEvent = await event.save();
 
@@ -311,23 +329,21 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
 // [POST] /api/v1/events/:id/check-in
 const CheckInEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    let { location, checkInAt, userId, distance } = req.body;
-    const event = await EventModel.findById(id);
+    let { location, checkInAt, userId, distance, encryptedData } = req.body;
+
     if (!checkInAt) {
         checkInAt = Date.now();
     }
 
+    if (!encryptedData) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Encrypted data is required');
+    }
+
+    const event = await EventModel.findById(id);
+
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
-
-    // if (event.startAt > new Date()) {
-    //     throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has not started yet');
-    // }
-
-    // if (event.endAt < new Date()) {
-    //     throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has ended');
-    // }
 
     if (event.attendeesList.length >= event.maxAttendees) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has reached maximum attendees');
@@ -335,6 +351,25 @@ const CheckInEvent = asyncHandler(async (req, res) => {
 
     if (checkInAt < event.startAt || checkInAt > event.endAt) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid check in time');
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    const { decryptedData, iv } = decryptData(encryptedData);
+    console.log('decryptedData', decryptedData);
+    if (decryptedData.eventCode !== event.eventCode) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event code');
+    }
+
+    if (decryptedData.startAt > checkInAt || decryptedData.endAt < checkInAt) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid check in time');
+    }
+
+    if (iv !== event.iv) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid QR code');
     }
 
     const attendance = await AttendanceModel.findOne({ event: id, user: req.user._id });

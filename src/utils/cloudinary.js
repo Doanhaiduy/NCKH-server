@@ -1,11 +1,10 @@
 const cloudinary = require('../configs/cloudinary');
-const uploadImage = async (file) => {
+const uploadImage = async (file, folderName) => {
     console.log('file', file);
-
     try {
         const result = await cloudinary.uploader.upload(file.path, {
             public_id: file.filename,
-            folder: 'NCKH',
+            folder: folderName ?? 'NCKH',
         });
 
         console.log(result);
@@ -19,10 +18,10 @@ const uploadImage = async (file) => {
     }
 };
 
-const uploadQRBase64 = async (base64) => {
+const uploadQRBase64 = async (base64, fileName) => {
     try {
         const result = await cloudinary.uploader.upload(base64, {
-            public_id: `QRCode-${Date.now()}`,
+            public_id: `QRCode-${fileName ?? Date.now()}`,
             folder: 'QRCode',
         });
 
@@ -32,7 +31,7 @@ const uploadQRBase64 = async (base64) => {
     }
 };
 
-const destroyImage = async (imageUrl) => {
+const destroyImageByUrl = async (imageUrl) => {
     try {
         const public_id = `${imageUrl.split('/')[7]}/${imageUrl.split('/')[8].split('.')[0]}`;
         console.log(public_id);
@@ -43,8 +42,18 @@ const destroyImage = async (imageUrl) => {
     }
 };
 
+const destroyImageByPublicId = async (public_id) => {
+    try {
+        const result = await cloudinary.uploader.destroy(public_id);
+        return result;
+    } catch (error) {
+        return error;
+    }
+};
+
 module.exports = {
     uploadImage,
     uploadQRBase64,
-    destroyImage,
+    destroyImageByUrl,
+    destroyImageByPublicId,
 };

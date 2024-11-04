@@ -3,6 +3,49 @@ const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
 const NotificationModel = require('../models/notificationModel');
 const UserModel = require('../models/userModel');
+const { Expo } = require('expo-server-sdk');
+
+const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
+    let expo = new Expo();
+    let messages = [];
+    let countSuccess = 0;
+
+    for (let pushToken of somePushTokens) {
+        if (!pushToken) {
+            console.error('Push token is not available');
+            continue;
+        }
+        if (!Expo.isExpoPushToken(pushToken)) {
+            console.error(`Push token ${pushToken} is not a valid Expo push token`);
+            continue;
+        }
+
+        messages.push({
+            to: pushToken,
+            sound: 'default',
+            title: data.title,
+            body: data.description,
+            data: { withSome: 'data' },
+        });
+    }
+
+    let chunks = expo.chunkPushNotifications(messages);
+    let tickets = [];
+    (async () => {
+        for (let chunk of chunks) {
+            try {
+                let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+                console.log(ticketChunk);
+                tickets.push(...ticketChunk);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    })();
+    console.log(
+        `Successfully push ${countSuccess} messages, unsuccessfully push ${messages.length - countSuccess} messages`
+    );
+});
 
 // [GET] /api/v1/notifications/get-all
 const GetAllNotifications = asyncHandle(async (req, res) => {
@@ -94,6 +137,13 @@ const CreateNotification = asyncHandle(async (req, res) => {
     });
 
     await notification.save();
+
+    await notification.populate('receiver');
+
+    const somePushTokens = notification.receiver.map((receiver) => receiver.expoPushToken);
+
+    console.log(somePushTokens);
+    await PushNotification({ data: { title: message, description }, somePushTokens });
 
     res.status(StatusCodes.CREATED).json({
         status: 'success',

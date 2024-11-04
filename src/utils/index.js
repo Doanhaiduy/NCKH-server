@@ -1,7 +1,8 @@
 require('dotenv').config();
 
 const { transporter } = require('../configs/nodemailer');
-const CryptoJS = require('crypto-js');
+// const crypto = require('crypto');
+const cryptoJs = require('crypto-js');
 
 const genOTP = () => {
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -19,20 +20,27 @@ const handleSendMail = async (val) => {
 };
 
 const encryptData = (data) => {
-    const cipherText = CryptoJS.AES.encrypt(data, process.env.CRYPTO_SECRET_KEY).toString();
-    return cipherText;
+    const key = process.env.CRYPTO_SECRET_KEY;
+    const iv = cryptoJs.lib.WordArray.random(16);
+    const encrypted = cryptoJs.AES.encrypt(JSON.stringify(data), key, {
+        iv,
+    });
+    return {
+        encryptedData: `${iv.toString()}:${encrypted.toString()}`,
+        iv: iv.toString(),
+    };
 };
 
-const decryptData = (cipherText) => {
-    try {
-        const bytes = CryptoJS.AES.decrypt(cipherText, process.env.CRYPTO_SECRET_KEY);
-        if (bytes.sigBytes > 0) {
-            const originalText = bytes.toString(CryptoJS.enc.Utf8);
-            return originalText;
-        }
-    } catch (error) {
-        return 'error';
-    }
+const decryptData = (encryptedData) => {
+    const key = process.env.CRYPTO_SECRET_KEY;
+    const [iv, encrypted] = encryptedData.split(':');
+    const decrypted = cryptoJs.AES.decrypt(encrypted, key, {
+        iv: cryptoJs.enc.Hex.parse(iv),
+    });
+    return {
+        decryptedData: JSON.parse(decrypted.toString(cryptoJs.enc.Utf8)),
+        iv,
+    };
 };
 
 module.exports = {

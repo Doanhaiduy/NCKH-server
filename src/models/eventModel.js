@@ -99,6 +99,10 @@ const eventSchema = new mongoose.Schema(
                 ref: 'Attendance',
             },
         ],
+        iv: {
+            type: String,
+            required: true,
+        },
     },
     {
         timestamps: true,
