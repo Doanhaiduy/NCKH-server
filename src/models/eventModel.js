@@ -8,6 +8,13 @@ const eventSchema = new mongoose.Schema(
             trim: true,
             unique: true,
         },
+
+        semesterYear: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'SemesterYear',
+            required: true,
+        },
+
         name: {
             type: String,
             required: [true, 'Please enter your event name'],
@@ -31,21 +38,6 @@ const eventSchema = new mongoose.Schema(
         maxAttendees: {
             type: Number,
             required: [true, 'Please enter your event max attendees'],
-        },
-        type: {
-            // name: {
-            //     type: String,
-            //     required: [true, 'Please enter your event type name'],
-            //     trim: true,
-            //     maxLength: [50, 'Your event type name cannot exceed 50 characters'],
-            // },
-            // description: {
-            //     type: String,
-            //     required: [true, 'Please enter your event type description'],
-            //     trim: true,
-            //     maxLength: [500, 'Your event type description cannot exceed 500 characters'],
-            // },
-            // add 1 Model category type event : ['....']
         },
         thumbnail: {
             type: String,
@@ -92,6 +84,11 @@ const eventSchema = new mongoose.Schema(
             type: String,
             enum: ['active', 'inactive', 'deleted'],
             default: 'active',
+        },
+        typeEvent: {
+            type: String,
+            enum: ['mandatory', 'optional'],
+            default: 'mandatory',
         },
         attendeesList: [
             {

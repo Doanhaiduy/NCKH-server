@@ -1,5 +1,6 @@
 const multer = require('multer');
 const fs = require('fs');
+const schedule = require('node-schedule');
 
 const Upload_Directory = 'uploads/';
 
@@ -18,6 +19,23 @@ const multerStorage = multer.diskStorage({
         const filename = `${originalFilename}-${uniqueSuffix}.${fileExtension}`;
         cb(null, filename);
     },
+});
+
+// Schedule to delete all files in Upload_Directory every 12 hours
+schedule.scheduleJob('0 */12 * * *', () => {
+    if (fs.existsSync(Upload_Directory)) {
+        fs.readdir(Upload_Directory, (err, files) => {
+            if (err) {
+                console.log(err);
+            } else {
+                if (files.length > 0) {
+                    files.forEach((file) => {
+                        fs.unlinkSync(Upload_Directory + file);
+                    });
+                }
+            }
+        });
+    }
 });
 
 const upload = multer({ storage: multerStorage });

@@ -21,6 +21,7 @@ const ROUTES = Object.freeze({
         GET_ALL_ADMINISTRATORS: '/:id/administrators',
         GET_ALL_TRAINING_POINTS: '/:id/training-points',
     },
+
     ROLE: {
         ROOT: '/roles',
         GET_ALL: '/get-all',
@@ -64,6 +65,7 @@ const ROUTES = Object.freeze({
         ID: '/:id',
         CREATE: '/',
         CHECK_IN: '/:id/check-in',
+        GET_ALL_BY_USER: '/:userId/get-all',
     },
 
     ATTENDANCE: {
@@ -79,11 +81,12 @@ const ROUTES = Object.freeze({
         CREATE: '/',
         UPDATE_STATUS: '/:id/update-status',
         UPDATE_CRITERIA_SCORE: '/:criteriaId/update-criteria-score',
-        UPDATE_MULTIPLE_CRITERIA_SCORE: '/:criteriaId/update-multiple-criteria-score',
+        UPDATE_CRITERIA_SCORE_TEMPLATE: '/:criteriaId/update-criteria-score-template',
         UPDATE_CRITERIA_EVIDENCE: '/:criteriaId/update-criteria-evidence',
-        UPDATE_MULTIPLE_CRITERIA_EVIDENCE: '/:criteriaId/update-multiple-criteria-evidence',
+        UPDATE_CRITERIA_EVIDENCE: '/:criteriaId/update-criteria-evidence',
         GET_CRITERIA_EVIDENCE: '/:criteriaId/criteria-evidence',
     },
+
     NOTIFICATION: {
         ROOT: '/notifications',
         GET_ALL: '/get-all',
@@ -93,9 +96,22 @@ const ROUTES = Object.freeze({
         DELETE: '/:id',
         READ: '/:id/read/:userId',
     },
+
+    FEEDBACK: {
+        ROOT: '/feedbacks',
+        GET_ALL: '/get-all',
+        ID: '/:id',
+        CREATE: '/',
+        DELETE: '/:id',
+    },
+
     UTILS: {
         ROOT: '/utils',
         SET_NEW_ROLE: '/set-new-role',
+        GET_SEMESTER_YEARS: '/semester-years',
+        GET_SEMESTER_YEAR: '/semester-years/:id',
+        CREATE_SEMESTER_YEAR: '/semester-years',
+        UPDATE_SEMESTER_YEAR: '/semester-years/:id',
     },
 });
 

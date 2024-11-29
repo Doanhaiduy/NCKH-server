@@ -42,6 +42,11 @@ const attendanceSchema = new mongoose.Schema(
                 maxLength: [500, 'Your location name cannot exceed 500 characters'],
             },
         },
+        semesterYear: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'SemesterYear',
+            required: true,
+        },
     },
     {
         timestamps: true,

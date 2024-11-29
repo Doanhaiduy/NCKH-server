@@ -3,6 +3,7 @@ const EventModel = require('../models/eventModel');
 const AttendanceModel = require('../models/attendanceModel');
 const UserModel = require('../models/userModel');
 const PostModel = require('../models/postModel');
+const SemesterYearModel = require('../models/semesterYearModel');
 const QRCode = require('qrcode');
 const { encryptData, decryptData } = require('../utils');
 const { uploadQRBase64, destroyImageByUrl } = require('../utils/cloudinary');
@@ -46,6 +47,7 @@ const createQRCode = async (data) => {
 
         const finalQRCodeBase64 = canvas.toDataURL();
 
+        // const qrCodeUrl = await uploadQRBase64(qrBase64, data.eventCode);
         const qrCodeUrl = await uploadQRBase64(finalQRCodeBase64, data.eventCode);
         console.log('qrCodeUrl', qrCodeUrl);
 
@@ -60,7 +62,7 @@ const createQRCode = async (data) => {
 
 // [GET] /api/v1/events/get-all
 const GetEvents = asyncHandler(async (req, res) => {
-    let { page, size, status, time, search } = req.query;
+    let { page, size, status, time, search, semester, year } = req.query;
     if (!page) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -86,6 +88,25 @@ const GetEvents = asyncHandler(async (req, res) => {
         query.$or = [{ name: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
     }
 
+    if (semester) {
+        if (year) {
+            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
+            if (!semesterYear) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            query.semester = semesterYear._id;
+        } else {
+            const semesterYears = await SemesterYearModel.findOne({
+                semester: semester,
+                year: new Date().getFullYear(),
+            });
+            if (!semesterYears) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            query.semester = semesterYears._id;
+        }
+    }
+
     const events = await EventModel.find(query)
         .select('name startAt endAt eventCode createdAt thumbnail')
         .populate('post', 'title')
@@ -93,6 +114,82 @@ const GetEvents = asyncHandler(async (req, res) => {
         .limit(limit)
         .skip(skip);
     const total_documents = await EventModel.countDocuments(query);
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size);
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            events,
+        },
+    });
+});
+
+// [GET] /api/v1/events/:userId/get-all
+const GetEventsByUser = asyncHandler(async (req, res) => {
+    let { page, size, status, time, semester, year } = req.query;
+    const { userId } = req.params;
+
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const query = {};
+    const currentDate = new Date();
+
+    if (['active', 'inactive'].includes(status)) {
+        query.status = status;
+    }
+
+    if (time === 'past') {
+        query.endAt = { $lt: currentDate };
+    } else if (time === 'ongoing') {
+        query.startAt = { $lte: currentDate };
+        query.endAt = { $gte: currentDate };
+    } else if (time === 'upcoming') {
+        query.startAt = { $gt: currentDate };
+    }
+
+    if (semester) {
+        if (year) {
+            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
+            if (!semesterYear) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            query.semester = semesterYear._id;
+        } else {
+            const semesterYears = await SemesterYearModel.findOne({
+                semester: semester,
+                year: new Date().getFullYear(),
+            });
+            if (!semesterYears) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            query.semester = semesterYears._id;
+        }
+    }
+
+    let events = await EventModel.find(query)
+        .select('name startAt endAt eventCode createdAt thumbnail attendeesList')
+        .populate('attendeesList', 'user')
+        .populate('post', 'title')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip);
+
+    if (status === 'active') {
+        events = events.filter((event) => {
+            return !event.attendeesList.some((attendee) => attendee.user.toString() === userId);
+        });
+    }
+
+    const total_documents = events.length;
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
 
@@ -143,6 +240,8 @@ const CreateEvent = asyncHandler(async (req, res) => {
         author,
         post = null,
         thumbnail,
+        typeEvent,
+        semester,
     } = req.body;
 
     const eventCode = 'EVENT-' + Date.now();
@@ -165,6 +264,12 @@ const CreateEvent = asyncHandler(async (req, res) => {
         }
     }
 
+    const semesterYear = await SemesterYearModel.findOne({ year: new Date(startAt).getFullYear(), semester: semester });
+
+    if (!semesterYear) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+    }
+
     const { qrCodeUrl, iv } = await createQRCode({
         eventCode,
         startAt: new Date(startAt).getTime(),
@@ -184,6 +289,8 @@ const CreateEvent = asyncHandler(async (req, res) => {
         author,
         post,
         thumbnail,
+        typeEvent,
+        semesterYear: semesterYear._id,
         iv,
     });
 
@@ -206,6 +313,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     const distanceLimit = req.body.distanceLimit;
     const thumbnail = req.body.thumbnail;
     const post = req.body.post;
+    const typeEvent = req.body.typeEvent;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event id');
@@ -258,6 +366,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     event.qrCodeUrl = qrCodeUrl || event.qrCodeUrl;
     event.thumbnail = thumbnail || event.thumbnail;
     event.post = post || event.post;
+    event.typeEvent = typeEvent || event.typeEvent;
     event.iv = iv || event.iv;
 
     const updatedEvent = await event.save();
@@ -383,6 +492,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         user: userId,
         checkInAt,
         location,
+        semesterYear: event.semesterYear,
         distance: distance || 0,
     })
         .then((newAttendance) => {
@@ -429,7 +539,7 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
 
 // [GET] /api/v1/users/:id/attendance
 const GetAttendancesByUser = asyncHandler(async (req, res) => {
-    let { status, page, size } = req.query;
+    let { status, page, size, semester, year } = req.query;
 
     if (!page) page = 1;
     if (!size) size = 10;
@@ -449,6 +559,25 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    if (semester) {
+        if (year) {
+            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
+            if (!semesterYear) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            queryAttendances.semester = semesterYear._id;
+        } else {
+            const semesterYears = await SemesterYearModel.findOne({
+                semester: semester,
+                year: new Date().getFullYear(),
+            });
+            if (!semesterYears) {
+                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
+            }
+            queryAttendances.semester = semesterYears._id;
+        }
     }
 
     const attendances = await AttendanceModel.find({ user: user._id, ...queryAttendances })
@@ -477,6 +606,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
 
 module.exports = {
     GetEvents,
+    GetEventsByUser,
     getEventByIdOrCode,
     CreateEvent,
     UpdateEvent,

@@ -5,6 +5,7 @@ const criteriaList = [
         title: 'Ý THỨC HỌC TẬP CỦA SV',
         maxScore: 20,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -12,6 +13,7 @@ const criteriaList = [
         title: 'Kết quả học tập trong học kỳ',
         maxScore: 4,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -19,6 +21,7 @@ const criteriaList = [
         title: 'Đạt tất cả',
         maxScore: 4,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -26,6 +29,7 @@ const criteriaList = [
         title: 'Nợ 1 môn',
         maxScore: 2,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -33,6 +37,7 @@ const criteriaList = [
         title: 'Nợ 2 môn',
         maxScore: 1,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -40,6 +45,7 @@ const criteriaList = [
         title: 'Nợ 3 môn',
         maxScore: 0,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -47,6 +53,7 @@ const criteriaList = [
         title: 'Tham gia các hoạt động học thuật: Tham gia các hoạt động học thuật được khoa/viện, bộ môn xác nhận',
         maxScore: 10,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -54,6 +61,7 @@ const criteriaList = [
         title: 'Tham gia các buổi tọa đàm, hội nghị, hội thảo khoa học',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: true,
         // may be auto from attendance
         description: '2 điểm/1 lần',
     },
@@ -63,6 +71,7 @@ const criteriaList = [
         title: 'Là chủ nhiệm đề tài/cộng tác viên đề tài NCKH các cấp',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: false,
     },
     {
         level: 3,
@@ -70,6 +79,7 @@ const criteriaList = [
         title: 'Tham gia các cuộc thi đạt giải cấp bộ học thuật',
         maxScore: 5,
         evidenceType: 'file',
+        isAutoScore: false,
         description: '2 điểm/1 cuộc thi nếu có tham gia hoặc 5 điểm/1 cuộc thi nếu có tham gia và đạt giải',
     },
     {
@@ -78,6 +88,7 @@ const criteriaList = [
         title: 'Tham gia các câu lạc bộ học thuật',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -85,6 +96,7 @@ const criteriaList = [
         title: 'Xếp loại về học tập',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -92,6 +104,7 @@ const criteriaList = [
         title: 'Xuất sắc',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -99,6 +112,7 @@ const criteriaList = [
         title: 'Giỏi',
         maxScore: 3,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -106,6 +120,7 @@ const criteriaList = [
         title: 'Khá',
         maxScore: 2,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -113,6 +128,7 @@ const criteriaList = [
         title: 'Trung bình',
         maxScore: 1,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -120,6 +136,7 @@ const criteriaList = [
         title: 'Yếu',
         maxScore: 0,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -127,6 +144,7 @@ const criteriaList = [
         title: 'Kết quả học tập học kỳ luôn duy trì ở loại khá trở lên hoặc vượt lên ít nhất một bậc xếp loại đối với loại kém, trung bình so với học kỳ trước',
         maxScore: 1,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 1,
@@ -134,6 +152,7 @@ const criteriaList = [
         title: 'Ý THỨC VÀ VIỆC CHẤP HÀNH NỘI QUY, QUY CHẾ TRONG NHÀ TRƯỜNG',
         maxScore: 25,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -141,6 +160,7 @@ const criteriaList = [
         title: 'Không vi phạm nội quy, quy định, quy chế',
         maxScore: 25,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -148,6 +168,7 @@ const criteriaList = [
         title: 'Bị kỷ luật hình thức khiển trách',
         maxScore: -10,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -155,6 +176,7 @@ const criteriaList = [
         title: 'Bị kỷ luật hình thức cảnh cáo',
         maxScore: -20,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -162,6 +184,7 @@ const criteriaList = [
         title: 'Không thực hiện đúng, đầy đủ quy định đối với sinh viên nội, ngoại trú về tất cả các thủ tục: kê khai, đăng ký nơi cư trú',
         maxScore: -5,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -169,6 +192,7 @@ const criteriaList = [
         title: 'Nộp học phí không đúng thời hạn',
         maxScore: -5,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -176,6 +200,7 @@ const criteriaList = [
         title: 'Không tham gia BHYT',
         maxScore: -10,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 1,
@@ -183,6 +208,7 @@ const criteriaList = [
         title: 'ĐÁNH GIÁ VỀ Ý THỨC VÀ VIỆC THAM GIA CÁC HOẠT ĐỘNG RÈN LUYỆN CHÍNH TRỊ - XÃ HỘI, VĂN HÓA VIỆT NAM, TDTT, PHÒNG CHỐNG CÁC TỆ NẠN XÃ HỘI',
         maxScore: 20,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -190,6 +216,7 @@ const criteriaList = [
         title: 'Tham gia đầy đủ các buổi chào cờ, hội nghị học tốt, sinh hoạt lớp, Đoàn, học chính trị đầu năm, đầu khóa,... ',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: true,
         description: 'vắng trừ 2 điểm/1 buổi',
     },
 
@@ -199,6 +226,7 @@ const criteriaList = [
         title: 'Không vi phạm luật an toàn giao thông, các tệ nạn xã hội',
         maxScore: 10,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -206,6 +234,7 @@ const criteriaList = [
         title: 'Tham gia tích cực các hoạt động tình nguyện, CLB sở thích, thể dục thể thao',
         maxScore: 5,
         evidenceType: 'file',
+        isAutoScore: false,
     },
     {
         level: 1,
@@ -213,6 +242,7 @@ const criteriaList = [
         title: 'ĐÁNH GIÁ VỀ PHẨM CHẤT CÔNG DÂN VÀ QUAN HỆ CỘNG ĐỒNG',
         maxScore: 25,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -220,6 +250,7 @@ const criteriaList = [
         title: 'Chấp hành nghiêm các chủ trương, đường lối của Đảng, chính sách, pháp luật của Nhà nước và địa phương nơi cư trú',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -227,6 +258,7 @@ const criteriaList = [
         title: 'Tích cực tham gia và tuyên truyền các phong trào (phòng chống tội phạm, phòng chống ma túy, bảo vệ môi trường), phong trào an ninh (cảnh giác phòng chống kẻ gian, bảo vệ người tốt), phong trào về an toàn giao thông,...',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -234,6 +266,7 @@ const criteriaList = [
         title: 'Có lối sống lành mạnh, có mối quan hệ tốt với bạn bè, thầy cô, trong trường và cộng đồng',
         maxScore: 5,
         evidenceType: 'none',
+        isAutoScore: false,
     },
     {
         level: 2,
@@ -241,6 +274,7 @@ const criteriaList = [
         title: 'Tham gia các hoạt động tình nguyện, văn hóa văn nghệ, thể dục thể thao do Đoàn - Hội tổ chức (2 điểm/1 hoạt động), tham gia chiến dịch tình nguyện hè',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: false,
         description: '2 điểm/1 hoạt động',
     },
     {
@@ -249,6 +283,7 @@ const criteriaList = [
         title: 'ĐÁNH GIÁ VỀ Ý THỨC VÀ KẾT QUẢ THAM GIA HOẠT ĐỘNG CỦA ĐOÀN THỂ, TỔ CHỨC TRONG NHÀ TRƯỜNG ĐẠT THÀNH TÍCH TRONG HỌC TẬP VÀ RÈN LUYỆN',
         maxScore: 20,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 2,
@@ -256,6 +291,7 @@ const criteriaList = [
         title: 'Đánh giá về ý thức và kết quả tham gia công tác của tập thể lớp ',
         maxScore: 10,
         evidenceType: 'none',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -263,6 +299,7 @@ const criteriaList = [
         title: 'Là thành viên của chi hội, chi đoàn được BCH Đoàn Khoa/Viện bình bầu hoàn thành Xuất sắc nhiệm vụ',
         maxScore: 10,
         evidenceType: 'none',
+        isAutoScore: false,
         description: '5 điểm nếu thuộc BCS, 10 điểm nếu là BCH chi đoàn',
     },
     {
@@ -271,6 +308,7 @@ const criteriaList = [
         title: 'Là thành viên của chi hội, chi đoàn được BCH Đoàn Khoa/Viện bình bầu hoàn thành Tốt nhiệm vụ',
         maxScore: 10,
         evidenceType: 'none',
+        isAutoScore: false,
         description: '4 điểm nếu thuộc BCS, 8 điểm nếu là BCH chi đoàn',
     },
     {
@@ -279,6 +317,7 @@ const criteriaList = [
         title: 'Được khen thưởng do có thành tích trong các hoạt động học tập, chính trị - xã hội, văn hóa văn nghệ, TDTT trong và ngoài trường',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: true,
     },
     {
         level: 3,
@@ -286,6 +325,7 @@ const criteriaList = [
         title: 'Cấp Khoa/Viện',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: false,
         description: '3 điểm/1 giấy khen',
     },
     {
@@ -294,6 +334,7 @@ const criteriaList = [
         title: 'Cấp trường trở lên',
         maxScore: 10,
         evidenceType: 'file',
+        isAutoScore: false,
         description: '5 điểm/1 giấy khen',
     },
 ];

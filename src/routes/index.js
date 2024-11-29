@@ -11,6 +11,8 @@ const AttendanceRouter = require('./attendanceRouter');
 const SClassRouter = require('./sClassRouter');
 const RoleRouter = require('./roleRouter');
 const NotificationRouter = require('./notificationRouter');
+const FeedbackRouter = require('./feedbackRouter');
+const UtilsRouter = require('./utilsRouter');
 
 const routerConfig = () => {
     Router.use(ROUTES.AUTH.ROOT, AuthRouter);
@@ -22,6 +24,8 @@ const routerConfig = () => {
     Router.use(ROUTES.SCLASS.ROOT, SClassRouter);
     Router.use(ROUTES.ROLE.ROOT, RoleRouter);
     Router.use(ROUTES.NOTIFICATION.ROOT, NotificationRouter);
+    Router.use(ROUTES.FEEDBACK.ROOT, FeedbackRouter);
+    Router.use(ROUTES.UTILS.ROOT, UtilsRouter);
     return Router;
 };
 

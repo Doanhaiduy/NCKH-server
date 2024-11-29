@@ -2,9 +2,9 @@ const asyncHandle = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
 const UserSchema = require('../models/userModel');
+const SemesterYearModel = require('../models/semesterYearModel');
 const { TrainingPointSchema, CriteriaSchema } = require('../models/trainingPointModel');
 const criteriaList = require('../mocks/criteriaList');
-const mongoose = require('mongoose');
 const ResponseSchema = require('../models/responseModel');
 const { uploadImage, destroyImageByPublicId } = require('../utils/cloudinary');
 
@@ -19,8 +19,21 @@ const createCriteriaTree = async (criteriaList) => {
             description: criteria.description || '',
             maxScore: criteria.maxScore,
             evidenceType: criteria.evidenceType || 'none',
+            isAutoScore: criteria.isAutoScore || false,
         });
+
         criteriaMap[criteria.criteriaCode] = criteriaDoc;
+
+        if (criteria.level > 1) {
+            const parentCode = criteria.criteriaCode.split('.').slice(0, -1).join('.');
+            criteriaDoc.parent = criteriaMap[parentCode]._id;
+            await criteriaDoc.save();
+        }
+
+        if (criteria.level === 1) {
+            criteriaDoc.parent = null;
+            await criteriaDoc.save();
+        }
     }
 
     for (const criteria of criteriaList) {
@@ -46,11 +59,16 @@ const CreateTrainingPoint = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year invalid');
     }
 
+    const semesterYear = await SemesterYearModel.findOne({ semester, year });
+
+    if (!semesterYear) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
+    }
+
     // check if training point already exists
     const existingTrainingPoint = await TrainingPointSchema.findOne({
         user: userId,
-        semester,
-        year,
+        semesterYear: semesterYear._id,
     });
 
     if (existingTrainingPoint) {
@@ -68,8 +86,7 @@ const CreateTrainingPoint = asyncHandle(async (req, res) => {
     // Create new training point document
     const newTrainingPoint = await TrainingPointSchema.create({
         user: userId,
-        semester,
-        year,
+        semesterYear: semesterYear._id,
         criteria: criteriaTree.map((criteria) => criteria._id),
         status: 'pending',
     });
@@ -86,11 +103,21 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 
     const query = {};
 
-    if ([1, 2].includes(Number(semester))) query.semester = semester;
-    if (year) query.year = year;
+    if (semester && year) {
+        const semesterYear = await SemesterYearModel.findOne({ semester, year });
+
+        if (!semesterYear) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
+        }
+
+        query.semesterYear = semesterYear._id;
+    }
     if (userId) query.user = userId;
 
-    const trainingPoints = await TrainingPointSchema.find(query);
+    const trainingPoints = await TrainingPointSchema.find(query).populate({
+        path: 'semesterYear',
+        select: '-updatedAt -createdAt',
+    });
 
     res.status(StatusCodes.OK).json({
         status: 'success',
@@ -104,6 +131,10 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
 
     const trainingPoint = await TrainingPointSchema.findById(id)
         .select('-updatedAt -createdAt')
+        .populate({
+            path: 'semesterYear',
+            select: '-updatedAt -createdAt',
+        })
         .populate({
             path: 'criteria',
             select: '-updatedAt -createdAt',
@@ -129,23 +160,38 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
 
 //[GET] /api/v1/users/:id/training-points
 const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
-    const { semester, year } = req.query;
+    const { semester, year, semesterYearId } = req.query;
 
-    if ([1, 2].includes(Number(semester)) === false || year === undefined) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year invalid');
+    const queryTrainingPoint = {};
+    const queryUser = {};
+
+    if (semester && year) {
+        const semesterYear = await SemesterYearModel.findOne({ semester, year });
+
+        if (!semesterYear) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
+        }
+
+        queryTrainingPoint.semesterYear = semesterYear._id;
     }
 
-    const idOrUsername = req.params.id;
+    if (semesterYearId) {
+        queryTrainingPoint.semesterYear = semesterYearId;
+    }
 
-    const query = mongoose.Types.ObjectId.isValid(idOrUsername) ? { _id: idOrUsername } : { username: idOrUsername };
-
-    const user = await UserSchema.findOne(query);
+    const user = await UserSchema.findById(req.params.id);
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
-    const trainingPoints = await TrainingPointSchema.find({ user: user._id, semester, year })
+    queryTrainingPoint.user = user._id;
+
+    const trainingPoints = await TrainingPointSchema.find(queryTrainingPoint)
+        .populate({
+            path: 'semesterYear',
+            select: '-updatedAt -createdAt',
+        })
         .populate({
             path: 'criteria',
             populate: {
@@ -202,38 +248,31 @@ const UpdateStatusTrainingPoint = asyncHandle(async (req, res) => {
     });
 });
 
-//[PUT] /api/v1/training-point/:criteriaId/update-criteria-score
-const UpdateCriteriaScoreTrainingPoint = asyncHandle(async (req, res) => {
-    const { criteriaId } = req.params;
-    const { score } = req.body;
-    const criteria = await CriteriaSchema.findById(criteriaId);
-
-    if (!criteria) {
-        throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
-    }
-
-    if (criteria.subCriteria.length > 0) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria is not a leaf node');
-    }
-
-    if (score && score !== criteria.totalScore) {
-        if (criteria.maxScore < score) {
-            throw new ApiError(StatusCodes.BAD_REQUEST, 'Score is greater than max score');
-        }
-
-        criteria.totalScore = score;
-        await criteria.save();
-    }
-
-    res.status(StatusCodes.OK).json({
-        status: 'success',
-        data: criteria,
-    });
-});
-
-//[PUT] /api/v1/training-point/update-multiple-criteria-score
-const UpdateMultipleCriteriaScoreTrainingPoint = asyncHandle(async (req, res) => {
+//[PUT] /api/v1/training-point/update-criteria-score
+const UpdateCriteriaScore = asyncHandle(async (req, res) => {
     const { criteriaScores } = req.body;
+    const criteriaOneValue = ['1.1.1', '1.1.2', '1.1.3', '1.1.4'];
+    const criteriaOneValue2 = ['1.3.1', '1.3.2', '1.3.3', '1.3.4'];
+
+    let criteriaArray = [];
+    let criteriaCheck = [];
+    let criteriaCheck2 = [];
+
+    function hasDuplicateCriteria(criteriaArray) {
+        const idSet = new Set();
+
+        for (const criteria of criteriaArray) {
+            if (idSet.has(criteria.criteriaId)) {
+                return true;
+            }
+            idSet.add(criteria.criteriaId);
+        }
+        return false;
+    }
+
+    if (hasDuplicateCriteria(criteriaScores)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Duplicate criteria in request');
+    }
 
     for (const criteriaScore of criteriaScores) {
         const { criteriaId, score } = criteriaScore;
@@ -247,25 +286,175 @@ const UpdateMultipleCriteriaScoreTrainingPoint = asyncHandle(async (req, res) =>
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria is not a leaf node');
         }
 
-        if (score && score !== criteria.totalScore) {
-            if (criteria.maxScore < score) {
-                throw new ApiError(StatusCodes.BAD_REQUEST, 'Score is greater than max score');
+        if (score && score > criteria.maxScore) {
+            throw new ApiError(
+                StatusCodes.BAD_REQUEST,
+                `Score is greater than max score of criteria ${criteria.criteriaCode}`
+            );
+        }
+
+        if (criteriaOneValue.includes(criteria.criteriaCode) && score != 0) {
+            criteriaCheck.push(criteria);
+        }
+
+        if (criteriaOneValue2.includes(criteria.criteriaCode) && score != 0) {
+            criteriaCheck2.push(criteria);
+        }
+
+        // 1.1 => 1.1.1, 1.1.2, 1.1.3, 1.1.4 => has 1 value in 4 criteria, if 1.1.1 has value => 1.1.2, 1.1.3, 1.1.4 don't have value
+
+        if (criteriaScore.score !== criteria.totalScore) {
+            criteriaArray.push(criteria);
+        }
+    }
+
+    if (criteriaCheck.length > 1) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Only one criteria in 1.1 can have value');
+    }
+
+    if (criteriaCheck2.length > 1) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Only one criteria in 1.3 can have value');
+    }
+
+    criteriaArray = criteriaArray.sort((a, b) => a.criteriaCode.localeCompare(b.criteriaCode));
+
+    for (const criteria of criteriaArray) {
+        const { criteriaId, score } = criteriaScores.find((criteriaScore) => criteriaScore.criteriaId === criteria.id);
+
+        if (criteriaOneValue.includes(criteria.criteriaCode)) {
+            if (criteria.maxScore != score && score != 0) {
+                throw new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                );
             }
         }
 
+        if (criteriaOneValue2.includes(criteria.criteriaCode)) {
+            if (criteria.maxScore != score && score != 0) {
+                throw new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                );
+            }
+        }
         criteria.totalScore = score;
-
-        await criteria.save();
+        await criteria.save({ runCustomPreSave: true, isTemplateScore: false });
     }
 
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: criteriaScores,
+        data: {
+            message: 'Update multiple criteria score successfully',
+        },
+    });
+});
+
+//[PUT] /api/v1/training-point/:criteriaId/update-criteria-score-temp
+const UpdateCriteriaScoreTemp = asyncHandle(async (req, res) => {
+    const { criteriaScores } = req.body;
+    const criteriaOneValue = ['1.1.1', '1.1.2', '1.1.3', '1.1.4'];
+    const criteriaOneValue2 = ['1.3.1', '1.3.2', '1.3.3', '1.3.4'];
+
+    let criteriaArray = [];
+    let criteriaCheck = [];
+    let criteriaCheck2 = [];
+
+    function hasDuplicateCriteria(criteriaArray) {
+        const idSet = new Set();
+
+        for (const criteria of criteriaArray) {
+            if (idSet.has(criteria.criteriaId)) {
+                return true;
+            }
+            idSet.add(criteria.criteriaId);
+        }
+        return false;
+    }
+
+    if (hasDuplicateCriteria(criteriaScores)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Duplicate criteria in request');
+    }
+
+    for (const criteriaScore of criteriaScores) {
+        const { criteriaId, score } = criteriaScore;
+        const criteria = await CriteriaSchema.findById(criteriaId);
+
+        if (!criteria) {
+            throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
+        }
+
+        if (criteria.subCriteria.length > 0) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria is not a leaf node');
+        }
+
+        if (score && score > criteria.maxScore) {
+            throw new ApiError(
+                StatusCodes.BAD_REQUEST,
+                `Score is greater than max score of criteria ${criteria.criteriaCode}`
+            );
+        }
+
+        if (criteriaOneValue.includes(criteria.criteriaCode) && score != 0) {
+            criteriaCheck.push(criteria);
+        }
+
+        if (criteriaOneValue2.includes(criteria.criteriaCode) && score != 0) {
+            criteriaCheck2.push(criteria);
+        }
+
+        if (criteriaScore.score !== criteria.tempScore) {
+            criteriaArray.push(criteria);
+        }
+    }
+
+    if (criteriaCheck.length > 1) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Only one criteria in 1.1 can have value');
+    }
+
+    if (criteriaCheck2.length > 1) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Only one criteria in 1.3 can have value');
+    }
+
+    criteriaArray = criteriaArray.sort((a, b) => a.criteriaCode.localeCompare(b.criteriaCode));
+
+    for (const criteria of criteriaArray) {
+        const { criteriaId, score } = criteriaScores.find((criteriaScore) => criteriaScore.criteriaId === criteria.id);
+
+        if (criteriaOneValue.includes(criteria.criteriaCode)) {
+            if (criteria.maxScore != score && score != 0) {
+                throw new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                );
+            }
+        }
+
+        if (criteriaOneValue2.includes(criteria.criteriaCode)) {
+            if (criteria.maxScore != score && score != 0) {
+                throw new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                );
+            }
+        }
+        criteria.tempScore = score;
+        await criteria.save({
+            runCustomPreSave: true,
+            isTemplateScore: true,
+        });
+    }
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: {
+            message: 'Update multiple criteria temp score successfully',
+        },
     });
 });
 
 //[PUT] /api/v1/training-point/:criteriaId/update-criteria-evidence
-const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
+const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
     console.log(req.files);
     const { criteriaId } = req.params;
     const { evidence } = req.body;
@@ -339,8 +528,6 @@ const UpdateCriteriaEvidenceTrainingPoint = asyncHandle(async (req, res) => {
     });
 });
 
-//[PUT] /api/v1/training-point/:criteriaId/update-multiple-criteria-evidence
-
 //[GET] /api/v1/training-point/:criteriaId/criteria-evidence
 const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     const { criteriaId } = req.params;
@@ -367,8 +554,8 @@ module.exports = {
     GetTrainingPointById,
     GetTrainingPointsByUserId,
     UpdateStatusTrainingPoint,
-    UpdateCriteriaScoreTrainingPoint,
-    UpdateMultipleCriteriaScoreTrainingPoint,
-    UpdateCriteriaEvidenceTrainingPoint,
+    UpdateCriteriaScoreTemp,
+    UpdateCriteriaScore,
+    UpdateCriteriaEvidence,
     GetCriteriaEvidence,
 };
