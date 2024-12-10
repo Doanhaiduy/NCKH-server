@@ -1,4 +1,6 @@
 const cloudinary = require('../configs/cloudinary');
+const pLimit = require('p-limit');
+
 const uploadImage = async (file, folderName) => {
     console.log('file', file);
     try {
@@ -16,6 +18,31 @@ const uploadImage = async (file, folderName) => {
     } catch (error) {
         return error;
     }
+};
+
+const upLoadMultipleImages = async (files, folderName) => {
+    const limit = pLimit(15);
+    let result = [];
+    if (files) {
+        result = files.map(async (file) => {
+            return limit(async () => {
+                const upload = await cloudinary.uploader.upload(file.path, {
+                    public_id: file.filename,
+                    folder: folderName ?? 'NCKH',
+                });
+                return upload;
+            });
+        });
+
+        result = await Promise.all(result);
+    }
+    result = result.map((item) => {
+        return {
+            url: item.secure_url,
+            public_id: item.public_id,
+        };
+    });
+    return result;
 };
 
 const uploadQRBase64 = async (base64, fileName) => {
@@ -56,4 +83,5 @@ module.exports = {
     uploadQRBase64,
     destroyImageByUrl,
     destroyImageByPublicId,
+    upLoadMultipleImages,
 };

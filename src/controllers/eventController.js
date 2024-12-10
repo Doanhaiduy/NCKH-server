@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
 const { createCanvas, loadImage } = require('canvas');
+const { handleCache } = require('../configs/redis');
 
 const createQRCode = async (data) => {
     if (!data) return null;
@@ -71,6 +72,19 @@ const GetEvents = asyncHandler(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
+    const key = `events_${page ? page : ''}_${size ? size : ''}_${status ? status : ''}_${time ? time : ''}_${
+        search ? search : ''
+    }`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     if (['active', 'inactive'].includes(status)) {
         query.status = status;
     }
@@ -116,6 +130,21 @@ const GetEvents = asyncHandler(async (req, res) => {
     const total_documents = await EventModel.countDocuments(query);
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
+
+    if (events.length !== 0) {
+        await handleCache(
+            key,
+            {
+                total: total_documents,
+                page: page,
+                size: size,
+                previous: previous_pages,
+                next: next_pages,
+                events,
+            },
+            900
+        );
+    }
 
     res.status(200).json({
         status: 'success',
@@ -212,6 +241,17 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
 
     const query = mongoose.Types.ObjectId.isValid(idOrCode) ? { _id: idOrCode } : { eventCode: idOrCode.toUpperCase() };
 
+    const key = `event_details_${idOrCode}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     const event = await EventModel.findOne(query)
         .select('-updatedAt -__v -attendeesList')
         .populate('author', 'fullName email')
@@ -220,6 +260,8 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
+
+    await handleCache(key, event, 900);
 
     res.status(200).json({
         status: 'success',
@@ -404,6 +446,17 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
     const limit = parseInt(size);
     const skip = (page - 1) * size;
 
+    const key = `attendees_${req.params.id}_${status}_${page}_${size}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     let query = {};
 
     if (['pending', 'approved', 'rejected'].includes(status)) {
@@ -421,6 +474,19 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
     const total_documents = event.attendeesList.length;
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
+
+    await handleCache(
+        key,
+        {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            attendees: event.attendeesList,
+        },
+        900
+    );
 
     res.status(200).json({
         status: 'success',

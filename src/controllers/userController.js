@@ -5,6 +5,9 @@ const { uploadImage } = require('../utils/cloudinary');
 const asyncHandler = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+const { handleCache } = require('../configs/redis');
+const pLimit = require('p-limit');
+const cloudinary = require('../configs/cloudinary');
 
 // [GET] /api/v1/users/get-all
 const GetUsers = asyncHandler(async (req, res) => {
@@ -13,6 +16,17 @@ const GetUsers = asyncHandler(async (req, res) => {
     if (!size) size = 10;
     const limit = parseInt(size);
     const skip = (page - 1) * size;
+
+    const key = `users_${page ? page : ''}_${size ? size : ''}_${search ? search : ''}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
 
     const query = {};
 
@@ -35,6 +49,21 @@ const GetUsers = asyncHandler(async (req, res) => {
 
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
+
+    if (users.length !== 0) {
+        await setCache(
+            key,
+            {
+                total: total_documents,
+                page: page,
+                size: size,
+                previous: previous_pages,
+                next: next_pages,
+                users,
+            },
+            900
+        );
+    }
 
     res.status(200).json({
         status: 'success',
@@ -155,24 +184,26 @@ const UploadSingle = asyncHandler(async (req, res) => {
 
 // [POST] /api/v1/utils/upload-multiple
 const UploadMultiple = asyncHandler(async (req, res) => {
-    console.log(req.files);
-    try {
-        let result = [];
-        if (req.files) {
-            for (let i = 0; i < req.files.length; i++) {
-                const file = req.files[i];
-                const upload = await uploadImage(file, null);
-                result.push(upload);
-            }
-        }
-
-        res.status(200).json({
-            status: 'success',
-            data: result,
+    const limit = pLimit(15);
+    let result = [];
+    if (req.files) {
+        result = req.files.map(async (file) => {
+            return limit(async () => {
+                const upload = await cloudinary.uploader.upload(file.path, {
+                    public_id: file.filename,
+                    folder: 'Test',
+                });
+                return upload;
+            });
         });
-    } catch (error) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, error.message);
+
+        result = await Promise.all(result);
     }
+
+    res.status(200).json({
+        status: 'success',
+        data: result,
+    });
 });
 
 module.exports = {

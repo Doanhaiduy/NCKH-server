@@ -4,7 +4,6 @@ const asyncHandler = require('express-async-handler');
 // [GET] /api/v1/semester-years
 const GetSemesterYears = asyncHandler(async (req, res) => {
     const semesterYears = await SemesterYearModel.find().sort({ year: -1 }).select('-createdAt -updatedAt');
-
     res.status(200).json({
         status: 'success',
         data: semesterYears,

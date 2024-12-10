@@ -3,10 +3,12 @@ const PostModel = require('../models/postModel');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+const { handleCache, setCache } = require('../configs/redis');
 
 // [GET] /api/v1/posts/get-all
 const GetPosts = asyncHandler(async (req, res) => {
     let { page, size, category, time, search } = req.query;
+
     if (!page) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -15,6 +17,17 @@ const GetPosts = asyncHandler(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
+    const key = `posts_${page ? page : ''}_${size ? size : ''}_${category ? category : ''}_${search ? search : ''}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     if (['news', 'activity'].includes(category)) {
         query.category = category;
     }
@@ -22,6 +35,7 @@ const GetPosts = asyncHandler(async (req, res) => {
     if (search) {
         query.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
     }
+
     const posts = await PostModel.find(query)
         .select('-content -status  -updatedAt -__v')
         .populate('author', 'fullName email')
@@ -33,6 +47,21 @@ const GetPosts = asyncHandler(async (req, res) => {
 
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
+
+    if (posts.length !== 0) {
+        await setCache(
+            key,
+            {
+                total: total_documents,
+                page: page,
+                size: size,
+                previous: previous_pages,
+                next: next_pages,
+                posts,
+            },
+            900
+        );
+    }
 
     res.status(200).json({
         status: 'success',
@@ -66,14 +95,7 @@ const CreatePost = asyncHandler(async (req, res) => {
         title: req.body.title,
         content: req.body.content,
     });
-    // if (req.body.posts) {
-    //     const posts = req.body.posts;
-    //     const newPosts = posts.map((post) => {
-    //         console.log(post);
-    //         return new PostModel(post);
-    //     });
-    //     await PostModel.insertMany(newPosts);
-    // }
+
     await post.save();
     res.status(201).json({
         status: 'success',

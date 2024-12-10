@@ -15,7 +15,8 @@ const postSchema = new mongoose.Schema(
         },
         thumbnail: {
             type: String,
-            default: 'https://res.cloudinary.com/dbnoomvgm/image/upload/v1719851707/NCKH/xw6ovct05dhrahgbebdc.jpg',
+            default:
+                'https://img.freepik.com/free-vector/abstract-coming-soon-halftone-style-background-design_1017-27282.jpg?semt=ais_hybrid',
         },
         content: {
             type: String,

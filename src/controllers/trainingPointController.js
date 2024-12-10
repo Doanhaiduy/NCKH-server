@@ -6,7 +6,8 @@ const SemesterYearModel = require('../models/semesterYearModel');
 const { TrainingPointSchema, CriteriaSchema } = require('../models/trainingPointModel');
 const criteriaList = require('../mocks/criteriaList');
 const ResponseSchema = require('../models/responseModel');
-const { uploadImage, destroyImageByPublicId } = require('../utils/cloudinary');
+const { uploadImage, destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloudinary');
+const { handleCache } = require('../configs/redis');
 
 const createCriteriaTree = async (criteriaList) => {
     const criteriaMap = {};
@@ -103,6 +104,17 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 
     const query = {};
 
+    const key = `TrainingPoint_${semester}_${year}_${userId}`;
+
+    const value = await handleCache.get(key);
+
+    if (value) {
+        return res.status(StatusCodes.OK).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     if (semester && year) {
         const semesterYear = await SemesterYearModel.findOne({ semester, year });
 
@@ -118,6 +130,8 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
         path: 'semesterYear',
         select: '-updatedAt -createdAt',
     });
+
+    await handleCache.set(key, trainingPoints, 120);
 
     res.status(StatusCodes.OK).json({
         status: 'success',
@@ -492,11 +506,11 @@ const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Evidence must be a file');
         }
 
-        let files = [];
-        for (const file of req.files) {
-            const upload = await uploadImage(file, 'evidence');
-            files.push(upload);
-        }
+        // for (const file of req.files) {
+        // const upload = await uploadImage(file, 'evidence');
+        // files.push(upload);
+        const files = await upLoadMultipleImages(req.files, 'evidence');
+        // }
 
         const response = await ResponseSchema.create({
             name: `Minh chứng cho tiêu chí ${criteria.criteriaCode}`,

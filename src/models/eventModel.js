@@ -42,7 +42,7 @@ const eventSchema = new mongoose.Schema(
         thumbnail: {
             type: String,
             default:
-                'https://res.cloudinary.com/dbnoomvgm/image/upload/v1721527942/8399068_dtcl-1721527938411-892185604.webp.webp',
+                'https://img.freepik.com/free-vector/abstract-coming-soon-halftone-style-background-design_1017-27282.jpg?semt=ais_hybrid',
         },
         location: {
             lat: {

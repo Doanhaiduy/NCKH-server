@@ -4,6 +4,7 @@ const { StatusCodes } = require('http-status-codes');
 const NotificationModel = require('../models/notificationModel');
 const UserModel = require('../models/userModel');
 const { Expo } = require('expo-server-sdk');
+const { handleCache } = require('../configs/redis');
 
 const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
     let expo = new Expo();
@@ -55,6 +56,17 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
     const limit = parseInt(size);
     const skip = (page - 1) * size;
 
+    const key = `notifications_${page ? page : ''}_${size ? size : ''}_${search ? search : ''}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(StatusCodes.OK).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
     const query = {};
     const currentDate = new Date();
 
@@ -64,6 +76,21 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
 
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
+
+    if (notifications.length !== 0) {
+        await setCache(
+            key,
+            {
+                total: total_documents,
+                page: page,
+                size: size,
+                previous: previous_pages,
+                next: next_pages,
+                notifications,
+            },
+            900
+        );
+    }
 
     res.status(StatusCodes.OK).json({
         status: 'success',
