@@ -8,9 +8,9 @@ const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
 const { GetFeedbacks, CreateFeedback, GetFeedbackById, DeleteFeedback } = require('../controllers/feedbackController');
 
-Router.get(ROUTES.FEEDBACK.GET_ALL, [checkAuth, checkRole([ROLES.USER])], GetFeedbacks);
+Router.get(ROUTES.FEEDBACK.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN])], GetFeedbacks);
 Router.post(ROUTES.FEEDBACK.CREATE, [checkAuth, checkRole([ROLES.USER])], CreateFeedback);
-Router.get(ROUTES.FEEDBACK.ID, [checkAuth, checkRole([ROLES.USER])], GetFeedbackById);
-Router.delete(ROUTES.FEEDBACK.DELETE, [checkAuth, checkRole([ROLES.USER])], DeleteFeedback);
+Router.get(ROUTES.FEEDBACK.ID, [checkAuth, checkRole([ROLES.ADMIN])], GetFeedbackById);
+Router.delete(ROUTES.FEEDBACK.DELETE, [checkAuth, checkRole([ROLES.ADMIN])], DeleteFeedback);
 
 module.exports = Router;

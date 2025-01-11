@@ -6,10 +6,10 @@ const checkRole = require('../middlewares/checkRoleMiddleware');
 const ROLES = require('../constants/roles');
 const ROUTES = require('../constants/routes');
 
-Router.get(ROUTES.POST.GET_ALL, [checkAuth, checkRole([ROLES.USER])], GetPosts);
-Router.get(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.USER])], GetPostById);
-Router.post(ROUTES.POST.CREATE, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], CreatePost);
-Router.put(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], UpdatePost);
-Router.delete(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], DeletePost);
+Router.get(ROUTES.POST.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetPosts);
+Router.get(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetPostById);
+Router.post(ROUTES.POST.CREATE, [checkAuth, checkRole([ROLES.ADMIN])], CreatePost);
+Router.put(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.ADMIN])], UpdatePost);
+Router.delete(ROUTES.POST.ID, [checkAuth, checkRole([ROLES.ADMIN])], DeletePost);
 
 module.exports = Router;

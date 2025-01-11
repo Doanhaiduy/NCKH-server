@@ -714,6 +714,7 @@ const UpdateStatusAttendance = asyncHandler(async (req, res) => {
 // [GET] /api/v1/users/:id/attendance
 const GetAttendancesByUser = asyncHandler(async (req, res) => {
     let { status, page, size, semester, year } = req.query;
+    const userReq = req.user;
 
     if (!page) page = 1;
     if (!size) size = 10;
@@ -733,6 +734,10 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    if (userReq.typeRole === 'user' && userReq.id !== user.id) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this route');
     }
 
     if (semester) {

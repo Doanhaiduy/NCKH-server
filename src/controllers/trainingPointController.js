@@ -186,6 +186,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 //[GET] /api/v1/training-point/:id
 const GetTrainingPointById = asyncHandle(async (req, res) => {
     const { id } = req.params;
+    const user = req.user;
 
     const trainingPoint = await TrainingPointSchema.findById(id)
         .select('-updatedAt -createdAt')
@@ -206,6 +207,10 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
             },
         });
 
+    if (user.typeRole === 'user' && trainingPoint.user != user.id) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource');
+    }
+
     if (!trainingPoint) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
     }
@@ -221,6 +226,7 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
     const { semester, year, semesterYearId } = req.query;
 
     const queryTrainingPoint = {};
+    const userReq = req.user;
     const queryUser = {};
 
     if (semester && year) {
@@ -241,6 +247,10 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    if (userReq.typeRole === 'user' && user._id != userReq.id) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource');
     }
 
     queryTrainingPoint.user = user._id;
@@ -604,8 +614,12 @@ const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
 //[GET] /api/v1/training-point/:criteriaId/criteria-evidence
 const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     const { criteriaId } = req.params;
+    const user = req.user;
 
     const criteria = await CriteriaSchema.findById(criteriaId).populate('evidence');
+    if (user.typeRole === 'user' && criteria.user != user.id) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource');
+    }
 
     if (!criteria) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');

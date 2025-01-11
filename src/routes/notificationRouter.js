@@ -16,9 +16,9 @@ const ROUTES = require('../constants/routes');
 
 Router.get(ROUTES.NOTIFICATION.GET_ALL, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), GetAllNotifications);
 Router.get(ROUTES.NOTIFICATION.ID, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), GetNotificationById);
-Router.post(ROUTES.NOTIFICATION.CREATE, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), CreateNotification);
+Router.post(ROUTES.NOTIFICATION.CREATE, checkAuth, checkRole([ROLES.ADMIN]), CreateNotification);
 Router.put(ROUTES.NOTIFICATION.READ, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), ReadNotification);
-Router.put(ROUTES.NOTIFICATION.UPDATE, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), UpdateNotification);
-Router.delete(ROUTES.NOTIFICATION.ID, checkAuth, checkRole([ROLES.ADMIN, ROLES.USER]), DeleteNotification);
+Router.put(ROUTES.NOTIFICATION.UPDATE, checkAuth, checkRole([ROLES.ADMIN]), UpdateNotification);
+Router.delete(ROUTES.NOTIFICATION.ID, checkAuth, checkRole([ROLES.ADMIN]), DeleteNotification);
 
 module.exports = Router;

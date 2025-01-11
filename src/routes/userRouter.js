@@ -11,14 +11,14 @@ const upload = require('../configs/multer');
 const { UploadSingle, UploadMultiple } = require('../controllers/userController');
 const { GetUserNotifications } = require('../controllers/notificationController');
 
-Router.get(ROUTES.USER.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetUsers);
+Router.get(ROUTES.USER.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN])], GetUsers);
 Router.get(ROUTES.USER.GET_ATTENDANCE, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetAttendancesByUser);
 Router.get(
     ROUTES.USER.GET_TRAINING_POINTS,
     [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])],
     GetTrainingPointsByUserId
 );
-Router.get(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.USER])], getUserByIdOrUsername);
+Router.get(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], getUserByIdOrUsername);
 Router.get(ROUTES.USER.GET_NOTIFICATIONS, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetUserNotifications);
 
 Router.post(
@@ -34,6 +34,6 @@ Router.post(
     UploadMultiple
 );
 Router.put(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], UpdateUser);
-Router.delete(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], DeleteUser);
+Router.delete(ROUTES.USER.ID, [checkAuth, checkRole([ROLES.ADMIN])], DeleteUser);
 
 module.exports = Router;

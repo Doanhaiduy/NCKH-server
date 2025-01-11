@@ -2,7 +2,7 @@ const ROUTES = Object.freeze({
     AUTH: {
         ROOT: '/auth',
         LOGIN: '/login',
-        LOGIN_ADMIN: 'admin/login',
+        LOGIN_ADMIN: '/admin/login',
         REGISTER: '/register',
         FORGOT_PASSWORD: '/forgot-password',
         VERIFY_OTP: '/verify-otp',

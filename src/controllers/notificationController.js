@@ -122,10 +122,15 @@ const GetNotificationById = asyncHandle(async (req, res) => {
 // [GET] /api/v1/users/:id/notifications
 const GetUserNotifications = asyncHandle(async (req, res) => {
     const { id } = req.params;
+    const userReq = req.user;
     const user = await UserModel.findById(id);
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+
+    if (userReq.role.name === 'user' && userReq.id.toString() !== id) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this resource');
     }
 
     const notifications = await NotificationModel.find({ receiver: id })
