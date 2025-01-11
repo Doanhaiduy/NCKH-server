@@ -5,7 +5,7 @@ const { uploadImage } = require('../utils/cloudinary');
 const asyncHandler = require('express-async-handler');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
-const { handleCache } = require('../configs/redis');
+const { handleCache, setCache } = require('../configs/redis');
 const pLimit = require('p-limit');
 const cloudinary = require('../configs/cloudinary');
 

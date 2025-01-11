@@ -2,6 +2,7 @@ const ROUTES = Object.freeze({
     AUTH: {
         ROOT: '/auth',
         LOGIN: '/login',
+        LOGIN_ADMIN: 'admin/login',
         REGISTER: '/register',
         FORGOT_PASSWORD: '/forgot-password',
         VERIFY_OTP: '/verify-otp',
@@ -66,6 +67,7 @@ const ROUTES = Object.freeze({
         CREATE: '/',
         CHECK_IN: '/:id/check-in',
         GET_ALL_BY_USER: '/:userId/get-all',
+        GET_REGISTERED_ATTENDEES: '/:id/registered-attendees',
     },
 
     ATTENDANCE: {

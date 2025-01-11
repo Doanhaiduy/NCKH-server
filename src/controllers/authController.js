@@ -72,6 +72,70 @@ const Login = asyncHandler(async (req, res) => {
     }
 });
 
+// [POST] /api/v1/admin/auth/login
+const AdminLogin = asyncHandler(async (req, res) => {
+    if (!req.body.username || !req.body.password) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Username and password are required');
+    }
+
+    const user = await UserModel.findOne({ username: req.body.username }).select('+password').populate('role');
+
+    if (!user) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
+    }
+    if (user.role.typeRole !== 'admin') {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'User not found');
+    }
+
+    const matchPassword = await bcrypt.compare(req.body.password, user.password);
+
+    if (matchPassword) {
+        const accessToken = generalJwtAccessToken({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            typeRole: user.role.typeRole,
+            roleCode: user.role.roleCode,
+        });
+
+        const refreshToken = await generalJwtRefreshToken({
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            typeRole: user.role.typeRole,
+            roleCode: user.role.roleCode,
+        });
+
+        if (!refreshToken || !accessToken) {
+            throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Generate token failed');
+        }
+
+        const sclass = await sClassSchema.findById(user.sclassName);
+        if (!sclass) {
+            throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+        }
+
+        await user.save();
+
+        res.status(200).json({
+            status: 'success',
+            data: {
+                id: user._id,
+                username: user.username,
+                fullName: user.fullName,
+                email: user.email,
+                avatar: user.avatar,
+                role: user.role.name,
+                accessToken,
+                refreshToken,
+                sclassName: sclass.sclassName,
+            },
+        });
+    } else {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Password is incorrect');
+    }
+});
+
 // [POST] /api/v1/auth/refresh-token
 const RefreshToken = asyncHandler(async (req, res) => {
     console.log('req.headers.token', req.headers.token);
@@ -334,4 +398,5 @@ module.exports = {
     ChangePassword,
     RefreshToken,
     Logout,
+    AdminLogin,
 };

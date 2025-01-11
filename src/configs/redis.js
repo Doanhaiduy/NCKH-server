@@ -22,6 +22,9 @@ const connectRedis = async () => {
 };
 
 const handleCache = async (key) => {
+    if (process.env.NODE_ENV === 'development') {
+        return null;
+    }
     const value = await redisClient.get(key);
     if (value) {
         console.log('Get data from cache', key);
@@ -32,6 +35,9 @@ const handleCache = async (key) => {
 };
 
 const setCache = async (key, value, time) => {
+    if (process.env.NODE_ENV === 'development') {
+        return null;
+    }
     await redisClient.setEx(key, time, JSON.stringify(value));
 };
 

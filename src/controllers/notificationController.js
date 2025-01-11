@@ -4,7 +4,7 @@ const { StatusCodes } = require('http-status-codes');
 const NotificationModel = require('../models/notificationModel');
 const UserModel = require('../models/userModel');
 const { Expo } = require('expo-server-sdk');
-const { handleCache } = require('../configs/redis');
+const { handleCache, setCache } = require('../configs/redis');
 
 const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
     let expo = new Expo();

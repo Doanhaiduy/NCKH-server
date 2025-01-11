@@ -6,8 +6,51 @@ const SemesterYearModel = require('../models/semesterYearModel');
 const { TrainingPointSchema, CriteriaSchema } = require('../models/trainingPointModel');
 const criteriaList = require('../mocks/criteriaList');
 const ResponseSchema = require('../models/responseModel');
-const { uploadImage, destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloudinary');
-const { handleCache } = require('../configs/redis');
+const { destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloudinary');
+const { handleCache, setCache } = require('../configs/redis');
+
+const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
+    const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
+    if (!trainingPoint) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
+    }
+
+    const criteriaList = await CriteriaSchema.find({ criteriaCode }).select('_id parent');
+
+    if (!criteriaList) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
+    }
+
+    for (const criteria of criteriaList) {
+        if (trainingPoint.criteria.includes(criteria._id)) {
+            return criteria._id;
+        }
+
+        if (criteria.parent) {
+            if (trainingPoint.criteria.includes(criteria.parent)) {
+                return criteria._id;
+            }
+
+            const parent = await CriteriaSchema.findById(criteria.parent);
+            if (parent.parent) {
+                if (trainingPoint.criteria.includes(parent.parent)) {
+                    return criteria._id;
+                }
+            }
+
+            if (parent.parent) {
+                const parentParent = await CriteriaSchema.findById(parent.parent);
+                if (parentParent.parent) {
+                    if (trainingPoint.criteria.includes(parentParent.parent)) {
+                        return criteria._id;
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+};
 
 const createCriteriaTree = async (criteriaList) => {
     const criteriaMap = {};
@@ -106,7 +149,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 
     const key = `TrainingPoint_${semester}_${year}_${userId}`;
 
-    const value = await handleCache.get(key);
+    const value = await handleCache(key);
 
     if (value) {
         return res.status(StatusCodes.OK).json({
@@ -124,6 +167,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 
         query.semesterYear = semesterYear._id;
     }
+
     if (userId) query.user = userId;
 
     const trainingPoints = await TrainingPointSchema.find(query).populate({
@@ -131,7 +175,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
         select: '-updatedAt -createdAt',
     });
 
-    await handleCache.set(key, trainingPoints, 120);
+    await setCache(key, trainingPoints, 900);
 
     res.status(StatusCodes.OK).json({
         status: 'success',
@@ -261,6 +305,21 @@ const UpdateStatusTrainingPoint = asyncHandle(async (req, res) => {
         data: trainingPoint,
     });
 });
+
+const updateCriteriaScore = async (criteriaId, scorePlus) => {
+    const criteria = await CriteriaSchema.findById(criteriaId);
+
+    if (!criteria) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
+    }
+
+    if (criteria.totalScore + scorePlus > criteria.maxScore) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Score is greater than max score of criteria');
+    }
+
+    criteria.totalScore += scorePlus;
+    await criteria.save({ runCustomPreSave: true, isTemplateScore: false });
+};
 
 //[PUT] /api/v1/training-point/update-criteria-score
 const UpdateCriteriaScore = asyncHandle(async (req, res) => {
@@ -563,6 +622,7 @@ const GetCriteriaEvidence = asyncHandle(async (req, res) => {
 });
 
 module.exports = {
+    getIdCriteria,
     CreateTrainingPoint,
     GetAllTrainingPoint,
     GetTrainingPointById,
@@ -572,4 +632,5 @@ module.exports = {
     UpdateCriteriaScore,
     UpdateCriteriaEvidence,
     GetCriteriaEvidence,
+    updateCriteriaScore,
 };

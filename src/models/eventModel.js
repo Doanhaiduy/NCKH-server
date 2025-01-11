@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const ApiError = require('../utils/ApiError');
 
 const eventSchema = new mongoose.Schema(
     {
@@ -8,13 +9,11 @@ const eventSchema = new mongoose.Schema(
             trim: true,
             unique: true,
         },
-
         semesterYear: {
             type: mongoose.Schema.ObjectId,
             ref: 'SemesterYear',
             required: true,
         },
-
         name: {
             type: String,
             required: [true, 'Please enter your event name'],
@@ -75,11 +74,6 @@ const eventSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
-        post: {
-            type: mongoose.Schema.ObjectId,
-            ref: 'Post',
-            default: null,
-        },
         status: {
             type: String,
             enum: ['active', 'inactive', 'deleted'],
@@ -90,6 +84,38 @@ const eventSchema = new mongoose.Schema(
             enum: ['mandatory', 'optional'],
             default: 'mandatory',
         },
+        post: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Post',
+            validate: {
+                validator: function (value) {
+                    if (this.typeEvent === 'optional' && !value) {
+                        throw new ApiError(400, 'Please enter your event post id with type optional');
+                    }
+                    return true;
+                },
+            },
+            default: null,
+        },
+        criteriaCode: {
+            type: String,
+            validate: {
+                validator: function (value) {
+                    if (this.typeEvent === 'optional' && !value) {
+                        throw new ApiError(400, 'Please enter your event criteria with type optional');
+                    }
+                    return true;
+                },
+            },
+            default: null,
+        },
+        // add validate for this...
+        registeredAttendees: [
+            {
+                type: mongoose.Schema.ObjectId,
+                ref: 'User',
+            },
+        ],
         attendeesList: [
             {
                 type: mongoose.Schema.ObjectId,

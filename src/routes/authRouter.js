@@ -9,6 +9,7 @@ const {
     RefreshToken,
     Logout,
     VerifyOTP,
+    AdminLogin,
 } = require('../controllers/authController');
 const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
@@ -16,6 +17,7 @@ const ROLES = require('../constants/roles');
 const ROUTES = require('../constants/routes');
 
 Router.post(ROUTES.AUTH.LOGIN, Login);
+Router.post(ROUTES.AUTH.LOGIN_ADMIN, AdminLogin);
 Router.post(ROUTES.AUTH.REGISTER, Register);
 Router.post(ROUTES.AUTH.FORGOT_PASSWORD, ForgotPassword);
 Router.post(ROUTES.AUTH.VERIFY_OTP, VerifyOTP);

@@ -11,7 +11,8 @@ const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
 const { createCanvas, loadImage } = require('canvas');
-const { handleCache } = require('../configs/redis');
+const { handleCache, setCache } = require('../configs/redis');
+const { getIdCriteria, updateCriteriaScore } = require('./trainingPointController');
 
 const createQRCode = async (data) => {
     if (!data) return null;
@@ -63,18 +64,23 @@ const createQRCode = async (data) => {
 
 // [GET] /api/v1/events/get-all
 const GetEvents = asyncHandler(async (req, res) => {
-    let { page, size, status, time, search, semester, year } = req.query;
-    if (!page) page = 1;
+    let { page, size, status, time, search, semester, year, typeEvent } = req.query;
+    if (!page || page < 1) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
     const skip = (page - 1) * size;
+    const user = req.user;
 
     const query = {};
     const currentDate = new Date();
 
     const key = `events_${page ? page : ''}_${size ? size : ''}_${status ? status : ''}_${time ? time : ''}_${
         search ? search : ''
+    }_${typeEvent ? typeEvent : ''}_${semester ? semester : ''}_${year ? year : ''}_${
+        user.typeRole === 'user' ? user.id : ''
     }`;
+
+    console.log('key', key);
 
     const value = await handleCache(key);
 
@@ -87,6 +93,10 @@ const GetEvents = asyncHandler(async (req, res) => {
 
     if (['active', 'inactive'].includes(status)) {
         query.status = status;
+    }
+
+    if (['mandatory', 'optional'].includes(typeEvent)) {
+        query.typeEvent = typeEvent;
     }
 
     if (time === 'past') {
@@ -121,18 +131,53 @@ const GetEvents = asyncHandler(async (req, res) => {
         }
     }
 
-    const events = await EventModel.find(query)
-        .select('name startAt endAt eventCode createdAt thumbnail')
-        .populate('post', 'title')
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .skip(skip);
-    const total_documents = await EventModel.countDocuments(query);
+    let events;
+
+    if (status === 'active') {
+        if (user.typeRole === 'user') {
+            events = await EventModel.find(query)
+                .select('name startAt endAt eventCode createdAt thumbnail typeEvent')
+                .populate('attendeesList', 'user')
+                .populate('registeredAttendees', 'id username fullName email')
+                .populate('post', 'title')
+                .sort({ createdAt: -1 })
+                .limit(limit)
+                .skip(skip);
+
+            events = events.filter((event) => {
+                if (event.typeEvent === 'mandatory') {
+                    return !event.attendeesList.some((attendee) => {
+                        return attendee.user.toString() === user.id;
+                    });
+                } else if (event.typeEvent === 'optional') {
+                    const isInAttendeesList = !event.attendeesList.some((attendee) => {
+                        return attendee.user.toString() === user.id;
+                    });
+                    const isInRegisteredAttendees = event.registeredAttendees.some((attendee) => {
+                        return attendee.id === user.id;
+                    });
+
+                    return isInAttendeesList && isInRegisteredAttendees;
+                }
+            });
+        }
+    } else {
+        events = await EventModel.find(query)
+            .select('name startAt endAt eventCode createdAt thumbnail typeEvent')
+            .populate('attendeesList', 'user')
+            .populate('post', 'title')
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .skip(skip);
+    }
+
+    const total_documents =
+        status === 'active' && user.typeRole === 'user' ? events.length : await EventModel.countDocuments(query);
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
 
     if (events.length !== 0) {
-        await handleCache(
+        await setCache(
             key,
             {
                 total: total_documents,
@@ -145,82 +190,6 @@ const GetEvents = asyncHandler(async (req, res) => {
             900
         );
     }
-
-    res.status(200).json({
-        status: 'success',
-        data: {
-            total: total_documents,
-            page: page,
-            size: size,
-            previous: previous_pages,
-            next: next_pages,
-            events,
-        },
-    });
-});
-
-// [GET] /api/v1/events/:userId/get-all
-const GetEventsByUser = asyncHandler(async (req, res) => {
-    let { page, size, status, time, semester, year } = req.query;
-    const { userId } = req.params;
-
-    if (!page) page = 1;
-    if (!size) size = 10;
-    const limit = parseInt(size);
-    const skip = (page - 1) * size;
-
-    const query = {};
-    const currentDate = new Date();
-
-    if (['active', 'inactive'].includes(status)) {
-        query.status = status;
-    }
-
-    if (time === 'past') {
-        query.endAt = { $lt: currentDate };
-    } else if (time === 'ongoing') {
-        query.startAt = { $lte: currentDate };
-        query.endAt = { $gte: currentDate };
-    } else if (time === 'upcoming') {
-        query.startAt = { $gt: currentDate };
-    }
-
-    if (semester) {
-        if (year) {
-            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
-            if (!semesterYear) {
-                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
-            }
-            query.semester = semesterYear._id;
-        } else {
-            const semesterYears = await SemesterYearModel.findOne({
-                semester: semester,
-                year: new Date().getFullYear(),
-            });
-            if (!semesterYears) {
-                throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
-            }
-            query.semester = semesterYears._id;
-        }
-    }
-
-    let events = await EventModel.find(query)
-        .select('name startAt endAt eventCode createdAt thumbnail attendeesList')
-        .populate('attendeesList', 'user')
-        .populate('post', 'title')
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .skip(skip);
-
-    if (status === 'active') {
-        events = events.filter((event) => {
-            return !event.attendeesList.some((attendee) => attendee.user.toString() === userId);
-        });
-    }
-
-    const total_documents = events.length;
-    const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
 
     res.status(200).json({
         status: 'success',
@@ -253,7 +222,7 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
     }
 
     const event = await EventModel.findOne(query)
-        .select('-updatedAt -__v -attendeesList')
+        .select('-updatedAt -__v -attendeesList -registeredAttendees -semesterYear')
         .populate('author', 'fullName email')
         .populate('post', 'title');
 
@@ -261,7 +230,7 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
-    await handleCache(key, event, 900);
+    await setCache(key, event, 900);
 
     res.status(200).json({
         status: 'success',
@@ -284,6 +253,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
         thumbnail,
         typeEvent,
         semester,
+        criteriaCode,
     } = req.body;
 
     const eventCode = 'EVENT-' + Date.now();
@@ -293,6 +263,25 @@ const CreateEvent = asyncHandler(async (req, res) => {
 
     if (!name || !description || !endAt || !location || !author) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Name, description, end date, location,  author are required');
+    }
+
+    if (typeEvent && ['mandatory', 'optional'].includes(typeEvent) === false) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid type event');
+    }
+
+    if (typeEvent && typeEvent === 'optional' && post === null) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Post is required for optional event');
+    }
+
+    if (typeEvent && typeEvent === 'optional' && !criteriaCode) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria code is required for optional event');
+    }
+
+    if (criteriaCode) {
+        const availableCriteria = ['1.2.1', '4.4'];
+        if (!availableCriteria.includes(criteriaCode)) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid criteria code');
+        }
     }
 
     if (post) {
@@ -332,11 +321,18 @@ const CreateEvent = asyncHandler(async (req, res) => {
         post,
         thumbnail,
         typeEvent,
+        registeredAttendees: typeEvent === 'optional' ? [] : null,
         semesterYear: semesterYear._id,
+        criteriaCode,
         iv,
     });
 
     const createdEvent = await event.save();
+
+    if (!createdEvent) {
+        await destroyImageByUrl(qrCodeUrl);
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Create event failed');
+    }
 
     res.status(201).json({
         status: 'success',
@@ -356,12 +352,28 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     const thumbnail = req.body.thumbnail;
     const post = req.body.post;
     const typeEvent = req.body.typeEvent;
+    const criteriaCode = req.body.criteriaCode;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event id');
     }
 
     const event = await EventModel.findById(req.params.id);
+
+    // check if event is ongoing
+    const currentDate = new Date();
+    if (currentDate > event.startAt && currentDate < event.endAt) {
+        console.log('endAt', event.endAt);
+        console.log('startAt', event.startAt);
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Cannot update event while it is ongoing');
+    }
+
+    if (criteriaCode) {
+        const availableCriteria = ['1.2.1', '4.4'];
+        if (!availableCriteria.includes(criteriaCode)) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid criteria code');
+        }
+    }
 
     if (!startAt && !endAt) {
         event.thumbnail = thumbnail || event.thumbnail;
@@ -371,6 +383,8 @@ const UpdateEvent = asyncHandler(async (req, res) => {
         event.maxAttendees = maxAttendees || event.maxAttendees;
         event.location = location || event.location;
         event.distanceLimit = distanceLimit === undefined ? event.distanceLimit : distanceLimit;
+        event.typeEvent = typeEvent || event.typeEvent;
+        event.criteriaCode = criteriaCode || event.criteriaCode;
 
         const updatedEvent = await event.save();
         return res.status(200).json({
@@ -386,10 +400,6 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     const newEventCode = 'EVENT-' + Date.now();
 
     const result = await destroyImageByUrl(event.qrCodeUrl);
-
-    if (result.result !== 'ok') {
-        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Delete old QR code failed');
-    }
 
     const { qrCodeUrl, iv } = await createQRCode({
         eventCode: newEventCode,
@@ -410,6 +420,7 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     event.post = post || event.post;
     event.typeEvent = typeEvent || event.typeEvent;
     event.iv = iv || event.iv;
+    event.criteriaCode = criteriaCode || event.criteriaCode;
 
     const updatedEvent = await event.save();
 
@@ -421,6 +432,11 @@ const UpdateEvent = asyncHandler(async (req, res) => {
 
 // [DELETE] /api/v1/events/:id
 const DeleteEvent = asyncHandler(async (req, res) => {
+    const user = req.user;
+    if (user.typeRole !== 'admin') {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to delete event');
+    }
+
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event id');
     }
@@ -430,7 +446,15 @@ const DeleteEvent = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
+    const result = await destroyImageByUrl(event.qrCodeUrl);
+    if (result.result !== 'ok') {
+        throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Delete old QR code failed');
+    }
+
+    // delete all attendance of this event
     await event.deleteOne();
+    await AttendanceModel.deleteMany({ event: req.params.id });
+
     res.status(200).json({
         status: 'success',
         data: null,
@@ -475,7 +499,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size);
 
-    await handleCache(
+    await setCache(
         key,
         {
             total: total_documents,
@@ -501,10 +525,79 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
     });
 });
 
+// [GET] /api/v1/events/:id/registeredAttendees
+const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
+    let { page, size } = req.query;
+
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const key = `attendees_${req.params.id}_${page}_${size}`;
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
+    const event = await EventModel.findById(req.params.id)
+        .populate({ path: 'registeredAttendees', select: '-updatedAt -__v ', limit, skip })
+        .select('registeredAttendees');
+
+    if (!event) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
+    }
+
+    if (event.typeEvent === 'mandatory') {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'This event is not optional');
+    }
+
+    const total_documents = event.registeredAttendees.length;
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size);
+
+    await setCache(
+        key,
+        {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            registered: event.registeredAttendees,
+        },
+        900
+    );
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            registered: event.registeredAttendees,
+        },
+    });
+});
+
 // [POST] /api/v1/events/:id/check-in
 const CheckInEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    let userReq = req.user;
     let { location, checkInAt, userId, distance, encryptedData } = req.body;
+    let criteriaId;
+    if (userReq.typeRole !== 'user') {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to check in');
+    }
+    if (userReq.id !== userId) {
+        throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to check in for other users');
+    }
 
     if (!checkInAt) {
         checkInAt = Date.now();
@@ -514,10 +607,20 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Encrypted data is required');
     }
 
-    const event = await EventModel.findById(id);
+    const event = await EventModel.findById(id).populate('registeredAttendees');
 
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
+    }
+
+    if (event.typeEvent === 'optional') {
+        if (!event.registeredAttendees.some((attendee) => attendee.id === userId)) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'You are not registered for this event');
+        }
+        criteriaId = await getIdCriteria(event.criteriaCode, userId, event.semesterYear);
+        if (!criteriaId) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'You have not met the criteria for this event yet');
+        }
     }
 
     if (event.attendeesList.length >= event.maxAttendees) {
@@ -534,7 +637,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
     }
 
     const { decryptedData, iv } = decryptData(encryptedData);
-    console.log('decryptedData', decryptedData);
+
     if (decryptedData.eventCode !== event.eventCode) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid event code');
     }
@@ -561,9 +664,14 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         semesterYear: event.semesterYear,
         distance: distance || 0,
     })
-        .then((newAttendance) => {
+        .then(async (newAttendance) => {
             event.attendeesList.push(newAttendance._id);
             event.save();
+
+            if (event.typeEvent === 'optional') {
+                await updateCriteriaScore(criteriaId, 2);
+            }
+
             res.status(200).json({
                 status: 'success',
                 data: newAttendance,
@@ -633,7 +741,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
             if (!semesterYear) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
-            queryAttendances.semester = semesterYear._id;
+            queryAttendances.semesterYear = semesterYear._id;
         } else {
             const semesterYears = await SemesterYearModel.findOne({
                 semester: semester,
@@ -642,7 +750,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
             if (!semesterYears) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
-            queryAttendances.semester = semesterYears._id;
+            queryAttendances.semesterYear = semesterYears._id;
         }
     }
 
@@ -672,7 +780,6 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
 
 module.exports = {
     GetEvents,
-    GetEventsByUser,
     getEventByIdOrCode,
     CreateEvent,
     UpdateEvent,
@@ -681,4 +788,5 @@ module.exports = {
     CheckInEvent,
     UpdateStatusAttendance,
     GetAttendancesByUser,
+    GetRegisteredAttendeesList,
 };

@@ -16,7 +16,6 @@ const attendanceSchema = new mongoose.Schema(
             type: Date,
             required: [true, 'Please enter your check in time'],
         },
-
         status: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],
