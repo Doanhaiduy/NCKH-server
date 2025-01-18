@@ -9,6 +9,8 @@ const {
     GetAttendeesList,
     CheckInEvent,
     GetRegisteredAttendeesList,
+    RegisterEvent,
+    UnregisterEvent,
 } = require('../controllers/eventController');
 const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
@@ -21,6 +23,8 @@ Router.get(ROUTES.EVENT.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], g
 Router.get(ROUTES.EVENT.GET_REGISTERED_ATTENDEES, [checkAuth, checkRole([ROLES.ADMIN])], GetRegisteredAttendeesList);
 Router.post(ROUTES.EVENT.CREATE, [checkAuth, checkRole([ROLES.ADMIN])], CreateEvent);
 Router.post(ROUTES.EVENT.CHECK_IN, [checkAuth, checkRole([ROLES.USER])], CheckInEvent);
+Router.post(ROUTES.EVENT.REGISTER_EVENT, [checkAuth, checkRole([ROLES.USER])], RegisterEvent);
+Router.post(ROUTES.EVENT.UNREGISTER_EVENT, [checkAuth, checkRole([ROLES.USER])], UnregisterEvent);
 Router.put(ROUTES.EVENT.ID, [checkAuth, checkRole([ROLES.ADMIN])], UpdateEvent);
 Router.delete(ROUTES.EVENT.ID, [checkAuth, checkRole([ROLES.ADMIN])], DeleteEvent);
 

@@ -23,7 +23,15 @@ const routerConfig = require('./src/routes/index');
 //middlewares
 app.use(express.json());
 app.use(morgan('dev'));
-app.use(cors());
+app.use(
+    cors({
+        origin: 'http://localhost:3002',
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true,
+        maxAge: 86400,
+    })
+);
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(process.env.BASE_API_URL, routerConfig());

@@ -13,6 +13,7 @@ const {
     UpdateCriteriaScore,
     GetCriteriaEvidence,
     UpdateCriteriaScoreTemp,
+    UpdateCriteriaEvidenceStatus,
 } = require('../controllers/trainingPointController');
 const upload = require('../configs/multer');
 
@@ -23,7 +24,7 @@ Router.get(
     [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])],
     GetCriteriaEvidence
 );
-Router.post(ROUTES.TRAINING_POINT.CREATE, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], CreateTrainingPoint);
+Router.post(ROUTES.TRAINING_POINT.CREATE, [checkAuth, checkRole([ROLES.ADMIN])], CreateTrainingPoint);
 Router.put(ROUTES.TRAINING_POINT.UPDATE_STATUS, [checkAuth, checkRole([ROLES.ADMIN])], UpdateStatusTrainingPoint);
 
 Router.put(ROUTES.TRAINING_POINT.UPDATE_CRITERIA_SCORE, [checkAuth, checkRole([ROLES.ADMIN])], UpdateCriteriaScore);
@@ -39,6 +40,12 @@ Router.put(
     [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])],
     upload.array('evidence', 10),
     UpdateCriteriaEvidence
+);
+
+Router.put(
+    ROUTES.TRAINING_POINT.UPDATE_CRITERIA_EVIDENCE_STATUS,
+    [checkAuth, checkRole([ROLES.ADMIN])],
+    UpdateCriteriaEvidenceStatus
 );
 
 module.exports = Router;

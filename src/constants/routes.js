@@ -68,6 +68,8 @@ const ROUTES = Object.freeze({
         CHECK_IN: '/:id/check-in',
         GET_ALL_BY_USER: '/:userId/get-all',
         GET_REGISTERED_ATTENDEES: '/:id/registered-attendees',
+        REGISTER_EVENT: '/:id/register',
+        UNREGISTER_EVENT: '/:id/unregister',
     },
 
     ATTENDANCE: {
@@ -87,6 +89,7 @@ const ROUTES = Object.freeze({
         UPDATE_CRITERIA_EVIDENCE: '/:criteriaId/update-criteria-evidence',
         UPDATE_CRITERIA_EVIDENCE: '/:criteriaId/update-criteria-evidence',
         GET_CRITERIA_EVIDENCE: '/:criteriaId/criteria-evidence',
+        UPDATE_CRITERIA_EVIDENCE_STATUS: '/:evidenceId/update-criteria-evidence-status',
     },
 
     NOTIFICATION: {
@@ -114,6 +117,8 @@ const ROUTES = Object.freeze({
         GET_SEMESTER_YEAR: '/semester-years/:id',
         CREATE_SEMESTER_YEAR: '/semester-years',
         UPDATE_SEMESTER_YEAR: '/semester-years/:id',
+        GRADING_PERIOD: '/grading-periods',
+        UPDATE_GRADING_PERIOD: '/grading-periods/:id',
     },
 });
 

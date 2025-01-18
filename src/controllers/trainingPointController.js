@@ -8,6 +8,7 @@ const criteriaList = require('../mocks/criteriaList');
 const ResponseSchema = require('../models/responseModel');
 const { destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloudinary');
 const { handleCache, setCache } = require('../configs/redis');
+const GradingPeriodModel = require('../models/gradingPeriodModel');
 
 const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
     const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
@@ -214,10 +215,26 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
     if (!trainingPoint) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
     }
+    let isLocked = true;
+    const gradingPeriod = await GradingPeriodModel.findOne({
+        semesterYear: trainingPoint.semesterYear._id,
+    });
+
+    if (gradingPeriod) {
+        const currentDate = new Date();
+        if (currentDate >= gradingPeriod.startDate && currentDate <= gradingPeriod.endDate) {
+            isLocked = false;
+        }
+    }
 
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: trainingPoint,
+        data: {
+            ...trainingPoint.toObject(),
+            isLocked,
+            AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
+            AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
+        },
     });
 });
 
@@ -286,9 +303,26 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
             },
         });
 
+    let isLocked = true;
+    const gradingPeriod = await GradingPeriodModel.findOne({
+        semesterYear: queryTrainingPoint.semesterYear._id,
+    });
+
+    if (gradingPeriod) {
+        const currentDate = new Date();
+        if (currentDate >= gradingPeriod.startDate && currentDate <= gradingPeriod.endDate) {
+            isLocked = false;
+        }
+    }
+
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: trainingPoints[0],
+        data: {
+            ...trainingPoints[0].toObject(),
+            isLocked,
+            AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
+            AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
+        },
     });
 });
 
@@ -538,7 +572,6 @@ const UpdateCriteriaScoreTemp = asyncHandle(async (req, res) => {
 
 //[PUT] /api/v1/training-point/:criteriaId/update-criteria-evidence
 const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
-    console.log(req.files);
     const { criteriaId } = req.params;
     const { evidence } = req.body;
 
@@ -614,12 +647,8 @@ const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
 //[GET] /api/v1/training-point/:criteriaId/criteria-evidence
 const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     const { criteriaId } = req.params;
-    const user = req.user;
 
     const criteria = await CriteriaSchema.findById(criteriaId).populate('evidence');
-    if (user.typeRole === 'user' && criteria.user != user.id) {
-        throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource');
-    }
 
     if (!criteria) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
@@ -635,6 +664,31 @@ const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     });
 });
 
+//[PUT] /api/v1/training-point/:evidenceId/update-criteria-evidence-status
+const UpdateCriteriaEvidenceStatus = asyncHandle(async (req, res) => {
+    const { evidenceId } = req.params;
+    const { status } = req.body;
+
+    const evidence = await ResponseSchema.findById(evidenceId);
+
+    if (!evidence) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Evidence not found');
+    }
+
+    if (!['approved', 'rejected'].includes(status)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Status invalid');
+    }
+
+    evidence.status = status;
+
+    await evidence.save();
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: evidence,
+    });
+});
+
 module.exports = {
     getIdCriteria,
     CreateTrainingPoint,
@@ -647,4 +701,5 @@ module.exports = {
     UpdateCriteriaEvidence,
     GetCriteriaEvidence,
     updateCriteriaScore,
+    UpdateCriteriaEvidenceStatus,
 };

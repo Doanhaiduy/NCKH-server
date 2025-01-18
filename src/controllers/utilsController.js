@@ -1,5 +1,8 @@
 const SemesterYearModel = require('../models/semesterYearModel');
 const asyncHandler = require('express-async-handler');
+const GradingPeriodModel = require('../models/gradingPeriodModel');
+const ApiError = require('../utils/ApiError');
+const { StatusCodes } = require('http-status-codes');
 
 // [GET] /api/v1/semester-years
 const GetSemesterYears = asyncHandler(async (req, res) => {
@@ -57,9 +60,72 @@ const UpdateSemesterYear = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/grading-periods
+const CreateGradingPeriod = asyncHandler(async (req, res) => {
+    const { semester, year, startDate, endDate } = req.body;
+
+    if (!semester || !year || !startDate || !endDate) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester, year, start date, and end date are required');
+    }
+
+    if (startDate > endDate) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Start date must be less than end date');
+    }
+
+    const semesterYearExists = await SemesterYearModel.findOne({
+        semester,
+        year,
+    });
+
+    if (!semesterYearExists) {
+        throw new Error('Semester year does not exist');
+    }
+
+    const gradingPeriodExists = await GradingPeriodModel.findOne({
+        semesterYear: semesterYearExists._id,
+    });
+
+    if (gradingPeriodExists) {
+        throw new Error('Grading period already exists for this semester year');
+    }
+
+    const gradingPeriod = await GradingPeriodModel.create({
+        semesterYear: semesterYearExists._id,
+        startDate,
+        endDate,
+    });
+
+    res.status(201).json({
+        status: 'success',
+        data: gradingPeriod,
+    });
+});
+
+// [PUT] /api/v1/grading-periods/:id
+const UpdateGradingPeriod = asyncHandler(async (req, res) => {
+    const { startDate, endDate, status } = req.body;
+    const gradingPeriod = await GradingPeriodModel.findById(req.params.id);
+
+    if (!gradingPeriod) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Grading period not found');
+    }
+    gradingPeriod.startDate = startDate || gradingPeriod.startDate;
+    gradingPeriod.endDate = endDate || gradingPeriod.endDate;
+    gradingPeriod.status = status || gradingPeriod.status;
+
+    await gradingPeriod.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: gradingPeriod,
+    });
+});
+
 module.exports = {
     GetSemesterYears,
     CreateSemesterYear,
     GetSemesterYear,
     UpdateSemesterYear,
+    CreateGradingPeriod,
+    UpdateGradingPeriod,
 };

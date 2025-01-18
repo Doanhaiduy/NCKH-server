@@ -5,7 +5,7 @@ const UserModel = require('../models/userModel');
 const PostModel = require('../models/postModel');
 const SemesterYearModel = require('../models/semesterYearModel');
 const QRCode = require('qrcode');
-const { encryptData, decryptData } = require('../utils');
+const { encryptData, decryptData, getCurrentSemesterYear } = require('../utils');
 const { uploadQRBase64, destroyImageByUrl } = require('../utils/cloudinary');
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
@@ -112,6 +112,7 @@ const GetEvents = asyncHandler(async (req, res) => {
         query.$or = [{ name: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
     }
 
+    const currentSY = getCurrentSemesterYear();
     if (semester) {
         if (year) {
             const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
@@ -122,7 +123,7 @@ const GetEvents = asyncHandler(async (req, res) => {
         } else {
             const semesterYears = await SemesterYearModel.findOne({
                 semester: semester,
-                year: new Date().getFullYear(),
+                year: currentSY.year,
             });
             if (!semesterYears) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
@@ -284,18 +285,26 @@ const CreateEvent = asyncHandler(async (req, res) => {
         }
     }
 
+    let postExist;
+
     if (post) {
         if (!mongoose.Types.ObjectId.isValid(post)) {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid post id');
         } else {
-            const postExist = await PostModel.findById(post);
+            postExist = await PostModel.findById(post);
             if (!postExist) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Post not found');
             }
+            if (postExist.event) {
+                throw new ApiError(StatusCodes.BAD_REQUEST, 'This post has already been used for an event');
+            }
         }
     }
-
-    const semesterYear = await SemesterYearModel.findOne({ year: new Date(startAt).getFullYear(), semester: semester });
+    const currentSY = getCurrentSemesterYear();
+    const semesterYear = await SemesterYearModel.findOne({
+        year: currentSY.year,
+        semester: semester || currentSY.semester,
+    });
 
     if (!semesterYear) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
@@ -323,11 +332,13 @@ const CreateEvent = asyncHandler(async (req, res) => {
         typeEvent,
         registeredAttendees: typeEvent === 'optional' ? [] : null,
         semesterYear: semesterYear._id,
-        criteriaCode,
+        criteriaCode: typeEvent === 'optional' ? criteriaCode : null,
         iv,
     });
 
     const createdEvent = await event.save();
+
+    await postExist.updateOne({ event: createdEvent._id });
 
     if (!createdEvent) {
         await destroyImageByUrl(qrCodeUrl);
@@ -586,6 +597,66 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
     });
 });
 
+// [POST] /api/v1/events/:id/register
+const RegisterEvent = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = req.user;
+
+    const event = await EventModel.findById(id).populate('registeredAttendees');
+
+    if (!event) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
+    }
+
+    if (event.typeEvent === 'mandatory') {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'This event is not optional');
+    }
+
+    if (event.registeredAttendees.length === event.maxAttendees) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has reached maximum attendees');
+    }
+
+    if (event.registeredAttendees.some((attendee) => attendee.id === user.id)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'You have already registered for this event');
+    }
+
+    event.registeredAttendees.push(user.id);
+    await event.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: event,
+    });
+});
+
+// [POST] /api/v1/events/:id/unregister
+const UnregisterEvent = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = req.user;
+
+    const event = await EventModel.findById(id).populate('registeredAttendees');
+
+    if (!event) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
+    }
+
+    if (event.typeEvent === 'mandatory') {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'This event is not optional');
+    }
+
+    if (!event.registeredAttendees.some((attendee) => attendee.id === user.id)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'You have not registered for this event');
+    }
+
+    event.registeredAttendees = event.registeredAttendees.filter((attendee) => attendee.id !== user.id);
+    await event.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: event,
+    });
+});
+
 // [POST] /api/v1/events/:id/check-in
 const CheckInEvent = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -614,6 +685,14 @@ const CheckInEvent = asyncHandler(async (req, res) => {
     }
 
     if (event.typeEvent === 'optional') {
+        if (event.registeredAttendees.length === 0) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'You have not registered for this event');
+        }
+
+        if (event.attendeesList.length === event.maxAttendees) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Event has reached maximum attendees');
+        }
+
         if (!event.registeredAttendees.some((attendee) => attendee.id === userId)) {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'You are not registered for this event');
         }
@@ -741,6 +820,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
     }
 
     if (semester) {
+        const currentSY = getCurrentSemesterYear();
         if (year) {
             const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
             if (!semesterYear) {
@@ -750,7 +830,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
         } else {
             const semesterYears = await SemesterYearModel.findOne({
                 semester: semester,
-                year: new Date().getFullYear(),
+                year: currentSY.year,
             });
             if (!semesterYears) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
@@ -794,4 +874,6 @@ module.exports = {
     UpdateStatusAttendance,
     GetAttendancesByUser,
     GetRegisteredAttendeesList,
+    RegisterEvent,
+    UnregisterEvent,
 };

@@ -42,10 +42,27 @@ const decryptData = (encryptedData) => {
         iv,
     };
 };
+const getCurrentSemesterYear = () => {
+    const date = new Date();
+    let semester = 1;
+    let year = date.getFullYear();
+
+    if (date.getMonth() >= 2 && date.getMonth() <= 7) {
+        semester = 2;
+        year -= 1;
+    } else if (date.getMonth() >= 8) {
+        semester = 1;
+    } else {
+        year -= 1;
+    }
+
+    return { semester, year };
+};
 
 module.exports = {
     genOTP,
     handleSendMail,
     encryptData,
     decryptData,
+    getCurrentSemesterYear,
 };

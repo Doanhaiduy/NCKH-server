@@ -7,6 +7,10 @@ const postSchema = new mongoose.Schema(
             ref: 'User',
             required: [true, 'Please enter your post author'],
         },
+        event: {
+            type: mongoose.Schema.ObjectId,
+            ref: 'Event',
+        },
         title: {
             type: String,
             required: [true, 'Please enter your post title'],

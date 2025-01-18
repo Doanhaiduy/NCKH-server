@@ -325,7 +325,6 @@ const trainingPointSchema = new mongoose.Schema(
             ref: 'SemesterYear',
             required: true,
         },
-
         criteria: [
             {
                 type: mongoose.Schema.Types.ObjectId,

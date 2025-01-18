@@ -14,19 +14,19 @@ const roleList = [
     {
         roleCode: 'CBL',
         name: 'Cán Bộ Lớp',
-        typeRole: 'manager',
+        typeRole: 'admin',
         description: 'Sinh viên đóng vai trò quản lý điểm rèn luyện của lớp',
     },
     {
         roleCode: 'CV',
         name: 'Cố Vấn',
-        typeRole: 'manager',
+        typeRole: 'admin',
         description: 'Giảng viên cố vấn của lớp',
     },
     {
         roleCode: 'BCHK',
         name: 'Ban Chấp Hành Đoàn Khoa',
-        typeRole: 'manager',
+        typeRole: 'admin',
         description: 'Quản lý tất cả hoạt động của sinh viên trong Khoa',
     },
 ];
