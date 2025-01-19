@@ -8,7 +8,7 @@ const { getAllUserIds } = require('../services/userService');
 
 // [GET] /api/v1/semester-years
 const GetSemesterYears = asyncHandler(async (req, res) => {
-    const semesterYears = await SemesterYearModel.find().sort({ year: -1 }).select('-createdAt -updatedAt');
+    const semesterYears = await SemesterYearModel.find().sort({ year: -1 }).select('-createdAt -updatedAt').lean();
     res.status(200).json({
         status: 'success',
         data: semesterYears,
@@ -20,7 +20,7 @@ const CreateSemesterYear = asyncHandler(async (req, res) => {
     let { semester, year } = req.body;
     year = year || new Date().getFullYear();
 
-    const semesterYearExists = await SemesterYearModel.findOne({ semester, year });
+    const semesterYearExists = await SemesterYearModel.findOne({ semester, year }).lean();
 
     if (semesterYearExists) {
         res.status(400);
@@ -37,7 +37,7 @@ const CreateSemesterYear = asyncHandler(async (req, res) => {
 
 // [GET] /api/v1/semester-years/:id
 const GetSemesterYear = asyncHandler(async (req, res) => {
-    const semesterYear = await SemesterYearModel.findById(req.params.id);
+    const semesterYear = await SemesterYearModel.findById(req.params.id).lean();
 
     res.status(200).json({
         status: 'success',
@@ -77,7 +77,7 @@ const CreateGradingPeriod = asyncHandler(async (req, res) => {
     const semesterYearExists = await SemesterYearModel.findOne({
         semester,
         year,
-    });
+    }).lean();
 
     if (!semesterYearExists) {
         throw new Error('Semester year does not exist');
@@ -85,7 +85,7 @@ const CreateGradingPeriod = asyncHandler(async (req, res) => {
 
     const gradingPeriodExists = await GradingPeriodModel.findOne({
         semesterYear: semesterYearExists._id,
-    });
+    }).lean();
 
     if (gradingPeriodExists) {
         throw new Error('Grading period already exists for this semester year');

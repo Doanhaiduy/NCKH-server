@@ -14,7 +14,6 @@ const { createCanvas, loadImage } = require('canvas');
 const { handleCache, setCache } = require('../configs/redis');
 const { getIdCriteria, updateCriteriaScore } = require('./trainingPointController');
 const { scheduleEventNotifications } = require('../utils/scheduleJob');
-const { getAllUserIds } = require('../services/userService');
 
 const createQRCode = async (data) => {
     if (!data) return null;
@@ -115,7 +114,7 @@ const GetEvents = asyncHandler(async (req, res) => {
     const currentSY = getCurrentSemesterYear();
     if (semester) {
         if (year) {
-            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
+            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year }).lean();
             if (!semesterYear) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
@@ -124,7 +123,7 @@ const GetEvents = asyncHandler(async (req, res) => {
             const semesterYears = await SemesterYearModel.findOne({
                 semester: semester,
                 year: currentSY.year,
-            });
+            }).lean();
             if (!semesterYears) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
@@ -143,7 +142,8 @@ const GetEvents = asyncHandler(async (req, res) => {
                 .populate('post', 'title')
                 .sort({ createdAt: -1 })
                 .limit(limit)
-                .skip(skip);
+                .skip(skip)
+                .lean();
 
             events = events.filter((event) => {
                 if (event.typeEvent === 'mandatory') {
@@ -169,7 +169,8 @@ const GetEvents = asyncHandler(async (req, res) => {
             .populate('post', 'title')
             .sort({ createdAt: -1 })
             .limit(limit)
-            .skip(skip);
+            .skip(skip)
+            .lean();
     }
 
     const total_documents =
@@ -225,7 +226,8 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
     const event = await EventModel.findOne(query)
         .select('-updatedAt -__v -attendeesList -registeredAttendees -semesterYear')
         .populate('author', 'fullName email')
-        .populate('post', 'title');
+        .populate('post', 'title')
+        .lean();
 
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
@@ -304,7 +306,7 @@ const CreateEvent = asyncHandler(async (req, res) => {
     const semesterYear = await SemesterYearModel.findOne({
         year: currentSY.year,
         semester: semester || currentSY.semester,
-    });
+    }).lean();
 
     if (!semesterYear) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
@@ -509,7 +511,8 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
 
     const event = await EventModel.findById(req.params.id)
         .populate({ path: 'attendeesList', match: query, select: '-updatedAt -__v -createdAt', limit, skip })
-        .select('attendeesList');
+        .select('attendeesList')
+        .lean();
 
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
@@ -566,7 +569,8 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
 
     const event = await EventModel.findById(req.params.id)
         .populate({ path: 'registeredAttendees', select: '-updatedAt -__v ', limit, skip })
-        .select('registeredAttendees');
+        .select('registeredAttendees')
+        .lean();
 
     if (!event) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
@@ -719,7 +723,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid check in time');
     }
 
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findById(userId).lean();
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
@@ -738,7 +742,7 @@ const CheckInEvent = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid QR code');
     }
 
-    const attendance = await AttendanceModel.findOne({ event: id, user: req.user._id });
+    const attendance = await AttendanceModel.findOne({ event: id, user: req.user._id }).lean();
 
     if (attendance) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'You have already checked in');
@@ -818,7 +822,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
         queryAttendances.status = status;
     }
 
-    const user = await UserModel.findOne(query).select('_id');
+    const user = await UserModel.findOne(query).select('_id').lean();
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
@@ -831,7 +835,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
     if (semester) {
         const currentSY = getCurrentSemesterYear();
         if (year) {
-            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year });
+            const semesterYear = await SemesterYearModel.findOne({ semester: semester, year: year }).lean();
             if (!semesterYear) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
@@ -840,7 +844,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
             const semesterYears = await SemesterYearModel.findOne({
                 semester: semester,
                 year: currentSY.year,
-            });
+            }).lean();
             if (!semesterYears) {
                 throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
             }
@@ -853,7 +857,8 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
         .limit(limit)
         .skip(skip)
         .populate('event', 'name startAt endAt location eventCode')
-        .populate('user', 'fullName username email');
+        .populate('user', 'fullName username email')
+        .lean();
 
     const total_documents = attendances.length;
     const previous_pages = page - 1;

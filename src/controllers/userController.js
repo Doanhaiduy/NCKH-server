@@ -43,7 +43,8 @@ const GetUsers = asyncHandler(async (req, res) => {
         .populate('role', 'name')
         .sort({ createdAt: -1 })
         .limit(limit)
-        .skip(skip);
+        .skip(skip)
+        .lean();
 
     const total_documents = await UserModel.countDocuments(query);
 
@@ -84,7 +85,7 @@ const getUserByIdOrUsername = asyncHandler(async (req, res) => {
 
     const query = mongoose.Types.ObjectId.isValid(idOrUsername) ? { _id: idOrUsername } : { username: idOrUsername };
 
-    const user = await UserModel.findOne(query).select('-password -__v').populate('role', 'name');
+    const user = await UserModel.findOne(query).select('-password -__v').populate('role', 'name').lean();
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');

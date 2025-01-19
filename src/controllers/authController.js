@@ -55,7 +55,7 @@ const Login = asyncHandler(async (req, res) => {
             res.status(200).json({
                 status: 'success',
                 data: {
-                    id: user._id,
+                    _id: user._id,
                     username: user.username,
                     fullName: user.fullName,
                     email: user.email,
@@ -78,7 +78,7 @@ const AdminLogin = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Username and password are required');
     }
 
-    const user = await UserModel.findOne({ username: req.body.username }).select('+password').populate('role');
+    const user = await UserModel.findOne({ username: req.body.username }).select('+password').populate('role').lean();
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
@@ -114,8 +114,6 @@ const AdminLogin = asyncHandler(async (req, res) => {
         if (!sclass) {
             throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
         }
-
-        await user.save();
 
         res.status(200).json({
             status: 'success',

@@ -50,7 +50,8 @@ const GetPosts = asyncHandler(async (req, res) => {
         .populate('author', 'fullName email')
         .sort({ createdAt: -1 })
         .limit(limit)
-        .skip(skip);
+        .skip(skip)
+        .lean();
 
     const total_documents = await PostModel.countDocuments(query);
 
@@ -88,7 +89,7 @@ const GetPosts = asyncHandler(async (req, res) => {
 // [GET] /api/v1/posts/:id
 const GetPostById = asyncHandler(async (req, res) => {
     const user = req.user;
-    const post = await PostModel.findById(req.params.id).select('-updatedAt -__v');
+    const post = await PostModel.findById(req.params.id).select('-updatedAt -__v').lean();
     let typeAction = 'none';
     if (user.typeRole === 'user') {
         if (post.status === 'draft') {
@@ -114,9 +115,6 @@ const GetPostById = asyncHandler(async (req, res) => {
                 if (event.registeredAttendees.length === event.semesterYear.maxAttendees) {
                     typeAction = 'full';
                 }
-                // kiểm tra nếu trước thời gian sự kiện 30 phút thì không thể đăng ký
-                // ví dụ: 13:00 sự kiện bắt đầu, 12:31 không thể đăng ký
-                // và 12:29 có thể đăng ký
 
                 const currentTime = new Date().getTime();
                 const eventStartTime = new Date(event.startAt).getTime();
@@ -141,7 +139,7 @@ const GetPostById = asyncHandler(async (req, res) => {
     res.status(200).json({
         status: 'success',
         data: {
-            ...post.toObject(),
+            ...post,
             typeAction,
         },
     });

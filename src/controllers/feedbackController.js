@@ -3,7 +3,7 @@ const asyncHandler = require('express-async-handler');
 
 // [GET] /api/v1/feedbacks
 const GetFeedbacks = asyncHandler(async (req, res) => {
-    const feedbacks = await FeedbackModel.find().sort({ createdAt: -1 });
+    const feedbacks = await FeedbackModel.find().sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
         status: 'success',
@@ -25,7 +25,7 @@ const CreateFeedback = asyncHandler(async (req, res) => {
 
 // [GET] /api/v1/feedbacks/:id
 const GetFeedbackById = asyncHandler(async (req, res) => {
-    const feedback = await FeedbackModel.findById(req.params.id);
+    const feedback = await FeedbackModel.findById(req.params.id).lean();
 
     res.status(200).json({
         status: 'success',

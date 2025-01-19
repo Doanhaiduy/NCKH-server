@@ -11,12 +11,12 @@ const { handleCache, setCache } = require('../configs/redis');
 const GradingPeriodModel = require('../models/gradingPeriodModel');
 
 const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
-    const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
+    const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId }).lean();
     if (!trainingPoint) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
     }
 
-    const criteriaList = await CriteriaSchema.find({ criteriaCode }).select('_id parent');
+    const criteriaList = await CriteriaSchema.find({ criteriaCode }).select('_id parent').lean();
 
     if (!criteriaList) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
@@ -32,7 +32,7 @@ const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
                 return criteria._id;
             }
 
-            const parent = await CriteriaSchema.findById(criteria.parent);
+            const parent = await CriteriaSchema.findById(criteria.parent).lean();
             if (parent.parent) {
                 if (trainingPoint.criteria.includes(parent.parent)) {
                     return criteria._id;
@@ -40,7 +40,7 @@ const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
             }
 
             if (parent.parent) {
-                const parentParent = await CriteriaSchema.findById(parent.parent);
+                const parentParent = await CriteriaSchema.findById(parent.parent).lean();
                 if (parentParent.parent) {
                     if (trainingPoint.criteria.includes(parentParent.parent)) {
                         return criteria._id;
@@ -104,7 +104,7 @@ const CreateTrainingPoint = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year invalid');
     }
 
-    const semesterYear = await SemesterYearModel.findOne({ semester, year });
+    const semesterYear = await SemesterYearModel.findOne({ semester, year }).lean();
 
     if (!semesterYear) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
@@ -114,13 +114,13 @@ const CreateTrainingPoint = asyncHandle(async (req, res) => {
     const existingTrainingPoint = await TrainingPointSchema.findOne({
         user: userId,
         semesterYear: semesterYear._id,
-    });
+    }).lean();
 
     if (existingTrainingPoint) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Training point already exists');
     }
 
-    const existingUser = await UserSchema.findById(userId);
+    const existingUser = await UserSchema.findById(userId).lean();
 
     if (!existingUser) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'User not found');
@@ -160,7 +160,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
     }
 
     if (semester && year) {
-        const semesterYear = await SemesterYearModel.findOne({ semester, year });
+        const semesterYear = await SemesterYearModel.findOne({ semester, year }).lean();
 
         if (!semesterYear) {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
@@ -171,10 +171,12 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
 
     if (userId) query.user = userId;
 
-    const trainingPoints = await TrainingPointSchema.find(query).populate({
-        path: 'semesterYear',
-        select: '-updatedAt -createdAt',
-    });
+    const trainingPoints = await TrainingPointSchema.find(query)
+        .populate({
+            path: 'semesterYear',
+            select: '-updatedAt -createdAt',
+        })
+        .lean();
 
     await setCache(key, trainingPoints, 900);
 
@@ -206,7 +208,8 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
                     select: '-updatedAt -createdAt',
                 },
             },
-        });
+        })
+        .lean();
 
     if (user.typeRole === 'user' && trainingPoint.user != user.id) {
         throw new ApiError(StatusCodes.FORBIDDEN, 'You do not have permission to access this resource');
@@ -218,7 +221,7 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
     let isLocked = true;
     const gradingPeriod = await GradingPeriodModel.findOne({
         semesterYear: trainingPoint.semesterYear._id,
-    });
+    }).lean();
 
     if (gradingPeriod) {
         const currentDate = new Date();
@@ -230,7 +233,7 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
     res.status(StatusCodes.OK).json({
         status: 'success',
         data: {
-            ...trainingPoint.toObject(),
+            ...trainingPoint,
             isLocked,
             AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
             AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
@@ -247,7 +250,7 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
     const queryUser = {};
 
     if (semester && year) {
-        const semesterYear = await SemesterYearModel.findOne({ semester, year });
+        const semesterYear = await SemesterYearModel.findOne({ semester, year }).lean();
 
         if (!semesterYear) {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
@@ -260,7 +263,7 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
         queryTrainingPoint.semesterYear = semesterYearId;
     }
 
-    const user = await UserSchema.findById(req.params.id);
+    const user = await UserSchema.findById(req.params.id).lean();
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
@@ -301,12 +304,13 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
                     select: '_id name data',
                 },
             },
-        });
+        })
+        .lean();
 
     let isLocked = true;
     const gradingPeriod = await GradingPeriodModel.findOne({
         semesterYear: queryTrainingPoint.semesterYear._id,
-    });
+    }).lean();
 
     if (gradingPeriod) {
         const currentDate = new Date();
@@ -318,7 +322,7 @@ const GetTrainingPointsByUserId = asyncHandle(async (req, res) => {
     res.status(StatusCodes.OK).json({
         status: 'success',
         data: {
-            ...trainingPoints[0].toObject(),
+            ...trainingPoints[0],
             isLocked,
             AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
             AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
@@ -648,7 +652,7 @@ const UpdateCriteriaEvidence = asyncHandle(async (req, res) => {
 const GetCriteriaEvidence = asyncHandle(async (req, res) => {
     const { criteriaId } = req.params;
 
-    const criteria = await CriteriaSchema.findById(criteriaId).populate('evidence');
+    const criteria = await CriteriaSchema.findById(criteriaId).populate('evidence').lean();
 
     if (!criteria) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');

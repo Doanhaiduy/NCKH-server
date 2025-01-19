@@ -6,7 +6,7 @@ const { StatusCodes } = require('http-status-codes');
 
 // [GET] /api/v1/classes/get-all
 const GetAllClasses = asyncHandle(async (req, res) => {
-    const classes = await ClassSchema.find().populate('teacher', 'fullName email');
+    const classes = await ClassSchema.find().populate('teacher', 'fullName email').lean();
     res.status(200).json({
         status: 'success',
         data: classes,
@@ -16,7 +16,7 @@ const GetAllClasses = asyncHandle(async (req, res) => {
 // [GET] /api/v1/classes/:id
 const GetClassById = asyncHandle(async (req, res) => {
     const classId = req.params.id;
-    const classDetail = await ClassSchema.findById(classId).populate('teacher', 'fullName email');
+    const classDetail = await ClassSchema.findById(classId).populate('teacher', 'fullName email').lean();
 
     if (!classDetail) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
@@ -37,14 +37,14 @@ const CreateClass = asyncHandle(async (req, res) => {
     let hasTeacher;
 
     if (req.body.teacher) {
-        hasTeacher = await User.findOne({ _id: req.body.teacher, role: 'teacher' });
+        hasTeacher = await User.findOne({ _id: req.body.teacher, role: 'teacher' }).lean();
 
         if (!hasTeacher) {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Teacher does not exist');
         }
     }
 
-    const hasClass = await ClassSchema.findOne({ name: req.body.name });
+    const hasClass = await ClassSchema.findOne({ name: req.body.name }).lean();
     if (hasClass) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Class has already existed');
     }

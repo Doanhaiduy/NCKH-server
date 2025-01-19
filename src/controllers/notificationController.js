@@ -70,7 +70,7 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
-    const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 });
+    const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
 
     const total_documents = await NotificationModel.countDocuments(query);
 
@@ -107,7 +107,7 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
 
 // [GET] /api/v1/notifications/:id
 const GetNotificationById = asyncHandle(async (req, res) => {
-    const notification = await NotificationModel.findById(req.params.id);
+    const notification = await NotificationModel.findById(req.params.id).lean();
 
     if (!notification) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
@@ -123,7 +123,7 @@ const GetNotificationById = asyncHandle(async (req, res) => {
 const GetUserNotifications = asyncHandle(async (req, res) => {
     const { id } = req.params;
     const userReq = req.user;
-    const user = await UserModel.findById(id);
+    const user = await UserModel.findById(id).lean();
 
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
@@ -135,12 +135,12 @@ const GetUserNotifications = asyncHandle(async (req, res) => {
 
     const notifications = await NotificationModel.find({ receiver: id })
         .sort({ createdAt: -1 })
-        .select('-receiver -updatedAt -__v');
-
+        .select('-receiver -updatedAt -__v')
+        .lean();
     const result = notifications.map((notification) => {
         const isRead = notification.readBy.some((reader) => reader.readerId.toString() === id);
         return {
-            ...notification._doc,
+            ...notification,
             isRead,
             readBy: undefined,
         };

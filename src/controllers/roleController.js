@@ -6,7 +6,7 @@ const { StatusCodes } = require('http-status-codes');
 // -----------------  ROLE -----------------
 // [GET] /api/v1/-roles/get-all
 const GetAllRoles = asyncHandle(async (req, res) => {
-    const roles = await RoleSchema.find();
+    const roles = await RoleSchema.find().lean();
 
     res.status(StatusCodes.OK).json({
         status: 'success',
@@ -17,7 +17,7 @@ const GetAllRoles = asyncHandle(async (req, res) => {
 // [GET] /api/v1/-roles/:id
 const GetRoleById = asyncHandle(async (req, res) => {
     const roleId = req.params.id;
-    const role = await RoleSchema.findById(roleId);
+    const role = await RoleSchema.findById(roleId).lean();
 
     if (!role) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Role not found');
@@ -35,7 +35,7 @@ const CreateRole = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Name is required');
     }
 
-    const hasRole = await RoleSchema.findOne({ name: req.body.name });
+    const hasRole = await RoleSchema.findOne({ name: req.body.name }).lean();
     if (hasRole) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Role has already existed');
     }
@@ -44,7 +44,7 @@ const CreateRole = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Role code is required');
     }
 
-    const hasRoleCode = await RoleSchema.findOne({ roleCode: req.body.roleCode });
+    const hasRoleCode = await RoleSchema.findOne({ roleCode: req.body.roleCode }).lean();
     if (hasRoleCode) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Role code has already existed');
     }
