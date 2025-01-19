@@ -13,6 +13,8 @@ const { StatusCodes } = require('http-status-codes');
 const { createCanvas, loadImage } = require('canvas');
 const { handleCache, setCache } = require('../configs/redis');
 const { getIdCriteria, updateCriteriaScore } = require('./trainingPointController');
+const { scheduleEventNotifications } = require('../utils/scheduleJob');
+const { getAllUserIds } = require('../services/userService');
 
 const createQRCode = async (data) => {
     if (!data) return null;
@@ -34,8 +36,7 @@ const createQRCode = async (data) => {
             }
         );
         const qrImage = await loadImage(qrBase64);
-        const logoImage = await loadImage('https://i.ibb.co/T8gKWff/adaptive-icon.png');
-
+        const logoImage = await loadImage(require('path').resolve(__dirname, '../assets/images/icon.png'));
         const canvas = createCanvas(qrImage.width, qrImage.height);
         const ctx = canvas.getContext('2d');
 
@@ -48,7 +49,6 @@ const createQRCode = async (data) => {
         ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
 
         const finalQRCodeBase64 = canvas.toDataURL();
-
         // const qrCodeUrl = await uploadQRBase64(qrBase64, data.eventCode);
         const qrCodeUrl = await uploadQRBase64(finalQRCodeBase64, data.eventCode);
         console.log('qrCodeUrl', qrCodeUrl);
@@ -338,7 +338,16 @@ const CreateEvent = asyncHandler(async (req, res) => {
 
     const createdEvent = await event.save();
 
-    await postExist.updateOne({ event: createdEvent._id });
+    if (postExist) {
+        await postExist.updateOne({ event: createdEvent._id });
+    }
+
+    scheduleEventNotifications({
+        eventId: createdEvent._id,
+        startAt: startAt,
+        name: name,
+        author: author,
+    });
 
     if (!createdEvent) {
         await destroyImageByUrl(qrCodeUrl);

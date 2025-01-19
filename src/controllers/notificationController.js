@@ -129,7 +129,7 @@ const GetUserNotifications = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
 
-    if (userReq.role.name === 'user' && userReq.id.toString() !== id) {
+    if (userReq.typeRole === 'user' && userReq.id.toString() !== id) {
         throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this resource');
     }
 
@@ -153,11 +153,22 @@ const GetUserNotifications = asyncHandle(async (req, res) => {
 });
 
 // [POST] /api/v1/notifications
-const CreateNotification = asyncHandle(async (req, res) => {
-    const { sender, receiver, message, type, description } = req.body;
-
-    if (!sender || !receiver || !message || !type) {
+const createNotificationHandler = async ({ sender, getReceiver, message, type, description }) => {
+    if (!sender || !getReceiver || !message || !type) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Please fill all the fields');
+    }
+    let receiver = [];
+    // check type getReceiver is array
+    if (Array.isArray(getReceiver)) {
+        receiver = getReceiver;
+    } else {
+        receiver = await getReceiver();
+    }
+
+    if (receiver.length === 0) {
+        return {
+            message: 'No receiver found',
+        };
     }
 
     const notification = new NotificationModel({
@@ -169,13 +180,20 @@ const CreateNotification = asyncHandle(async (req, res) => {
     });
 
     await notification.save();
-
     await notification.populate('receiver');
 
     const somePushTokens = notification.receiver.map((receiver) => receiver.expoPushToken);
 
     console.log(somePushTokens);
     await PushNotification({ data: { title: message, description }, somePushTokens });
+
+    return notification;
+};
+
+const CreateNotification = asyncHandle(async (req, res) => {
+    const { sender, receiver, message, type, description } = req.body;
+
+    const notification = await createNotificationHandler({ sender, getReceiver: receiver, message, type, description });
 
     res.status(StatusCodes.CREATED).json({
         status: 'success',
@@ -264,6 +282,7 @@ const DeleteNotification = asyncHandle(async (req, res) => {
 module.exports = {
     GetAllNotifications,
     GetNotificationById,
+    createNotificationHandler,
     CreateNotification,
     UpdateNotification,
     DeleteNotification,

@@ -28,7 +28,7 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['system', 'reminder', 'news', 'activity', 'other'],
+            enum: ['system', 'reminder', 'news', 'activity', 'other', 'event', 'training-point', 'grading-period'],
             default: 'system',
         },
 

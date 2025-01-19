@@ -3,6 +3,8 @@ const asyncHandler = require('express-async-handler');
 const GradingPeriodModel = require('../models/gradingPeriodModel');
 const ApiError = require('../utils/ApiError');
 const { StatusCodes } = require('http-status-codes');
+const { scheduleTrainingPointGradeNotifications } = require('../utils/scheduleJob');
+const { getAllUserIds } = require('../services/userService');
 
 // [GET] /api/v1/semester-years
 const GetSemesterYears = asyncHandler(async (req, res) => {
@@ -94,6 +96,16 @@ const CreateGradingPeriod = asyncHandler(async (req, res) => {
         startDate,
         endDate,
     });
+
+    if (gradingPeriod) {
+        const receivers = getAllUserIds('user');
+        scheduleTrainingPointGradeNotifications({
+            startAt: gradingPeriod.startDate,
+            name: `Học kỳ ${semester} năm ${year}`,
+            author: req.user._id,
+            receiver: receivers,
+        });
+    }
 
     res.status(201).json({
         status: 'success',

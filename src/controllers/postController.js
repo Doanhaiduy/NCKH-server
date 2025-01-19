@@ -101,7 +101,7 @@ const GetPostById = asyncHandler(async (req, res) => {
                 .populate('attendeesList', 'user')
                 .populate('semesterYear');
 
-            if (event) {
+            if (event && event.startAt > new Date()) {
                 const register = event.registeredAttendees.find(
                     (attendee) => attendee.toString() === user.id.toString()
                 );
@@ -113,6 +113,16 @@ const GetPostById = asyncHandler(async (req, res) => {
 
                 if (event.registeredAttendees.length === event.semesterYear.maxAttendees) {
                     typeAction = 'full';
+                }
+                // kiểm tra nếu trước thời gian sự kiện 30 phút thì không thể đăng ký
+                // ví dụ: 13:00 sự kiện bắt đầu, 12:31 không thể đăng ký
+                // và 12:29 có thể đăng ký
+
+                const currentTime = new Date().getTime();
+                const eventStartTime = new Date(event.startAt).getTime();
+                const timeUntilEvent = eventStartTime - currentTime;
+                if (timeUntilEvent <= 30 * 60 * 1000) {
+                    typeAction = 'expired';
                 }
 
                 const attendee = event.attendeesList.find((attendee) => {
