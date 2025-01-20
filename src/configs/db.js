@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { initializeSemesterYears, initializedRoles } = require('./initialize');
+const slug = require('mongoose-slug-generator');
 
 const defaultOptions = {
     timestamps: true,
@@ -10,6 +11,7 @@ const defaultOptions = {
 };
 
 mongoose.Schema.defaultOptions = defaultOptions;
+mongoose.plugin(slug);
 
 const connectDB = async () => {
     try {

@@ -41,6 +41,11 @@ const postSchema = new mongoose.Schema(
             enum: ['news', 'activity'],
             default: 'activity',
         },
+        slug: {
+            type: String,
+            slug: 'title',
+            unique: true,
+        },
     },
     {
         timestamps: true,

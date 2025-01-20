@@ -120,6 +120,10 @@ const ROUTES = Object.freeze({
         GRADING_PERIOD: '/grading-periods',
         UPDATE_GRADING_PERIOD: '/grading-periods/:id',
     },
+
+    VIEWS: {
+        POST_DETAILS: '/posts/:id',
+    },
 });
 
 module.exports = ROUTES;
