@@ -136,9 +136,7 @@ const AdminLogin = asyncHandler(async (req, res) => {
 
 // [POST] /api/v1/auth/refresh-token
 const RefreshToken = asyncHandler(async (req, res) => {
-    console.log('req.headers.token', req.headers.token);
     const refreshToken = req.headers.token.split(' ')[1];
-    console.log('refreshToken', refreshToken);
     if (!refreshToken) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }
@@ -354,8 +352,7 @@ const ChangePassword = asyncHandler(async (req, res) => {
 
 // [POST] /api/v1/auth/logout
 const Logout = asyncHandler(async (req, res) => {
-    const AccessToken = req.headers.token;
-    const refreshToken = req.headers.refresh_token.split(' ')[1];
+    const refreshToken = req.body.refreshToken;
 
     if (!refreshToken) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
@@ -383,7 +380,7 @@ const Logout = asyncHandler(async (req, res) => {
 
     res.status(200).json({
         status: 'success',
-        data: null,
+        data: 'ok',
     });
 });
 

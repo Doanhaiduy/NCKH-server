@@ -43,7 +43,6 @@ const GetPosts = asyncHandler(async (req, res) => {
     if (user.typeRole === 'user') {
         query.status = 'published';
     }
-    console.log(query);
 
     const posts = await PostModel.find(query)
         .select('-content -status  -updatedAt -__v')
@@ -95,13 +94,11 @@ const GetPostById = asyncHandler(async (req, res) => {
         if (post.status === 'draft') {
             throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to view this post');
         }
-
         if (post.type === 'activity') {
             const event = await EventModel.findOne({ post: post._id })
-                .select('registeredAttendees attendeesList semesterYear')
+                .select('registeredAttendees attendeesList semesterYear startAt')
                 .populate('attendeesList', 'user')
                 .populate('semesterYear');
-
             if (event && event.startAt > new Date()) {
                 const register = event.registeredAttendees.find(
                     (attendee) => attendee.toString() === user.id.toString()

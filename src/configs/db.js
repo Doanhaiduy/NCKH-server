@@ -20,7 +20,6 @@ const connectDB = async () => {
         const connect = await mongoose.connect(DB_URI);
         await initializeSemesterYears();
         await initializedRoles();
-        console.log(`Connect to database successfully`);
     } catch (error) {
         console.error(`Error: ${error.message}`);
         process.exit(1);

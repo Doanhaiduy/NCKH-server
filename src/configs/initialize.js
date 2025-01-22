@@ -9,7 +9,6 @@ const initializeSemesterYears = async () => {
     for (const data of defaultData) {
         await SemesterYear.updateOne({ year: data.year, semester: data.semester }, data, { upsert: true });
     }
-    console.log('Semester years initialized');
 };
 
 const initializedRoles = async () => {
@@ -22,7 +21,6 @@ const initializedRoles = async () => {
     for (const role of defaultData) {
         await Role.updateOne({ roleCode: role.roleCode }, role, { upsert: true });
     }
-    console.log('Roles initialized');
 };
 
 module.exports = {

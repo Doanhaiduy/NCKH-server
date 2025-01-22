@@ -123,8 +123,6 @@ criteriaSchema.pre('save', async function (next) {
                         return sum + item.tempScore;
                     }, 0);
 
-                    console.log({ newGrandParentTempScore, maxScore: grandParent.maxScore });
-
                     if (newGrandParentTempScore > grandParent.maxScore) {
                         throw new ApiError(
                             StatusCodes.BAD_REQUEST,
@@ -215,8 +213,6 @@ criteriaSchema.pre('save', async function (next) {
                         }
                         return sum + item.totalScore;
                     }, 0);
-
-                    console.log({ newGrandParentTotalScore, maxScore: grandParent.maxScore });
 
                     if (newGrandParentTotalScore > grandParent.maxScore) {
                         throw new ApiError(

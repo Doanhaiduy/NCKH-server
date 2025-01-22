@@ -2,14 +2,11 @@ const cloudinary = require('../configs/cloudinary');
 const pLimit = require('p-limit');
 
 const uploadImage = async (file, folderName) => {
-    console.log('file', file);
     try {
         const result = await cloudinary.uploader.upload(file.path, {
             public_id: file.filename,
             folder: folderName ?? 'NCKH',
         });
-
-        console.log(result);
 
         return {
             url: result.secure_url,

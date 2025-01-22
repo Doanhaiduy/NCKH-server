@@ -167,7 +167,6 @@ const UploadSingle = asyncHandler(async (req, res) => {
     try {
         let result;
         const file = req.file;
-        console.log('req', { req: file });
         if (file) {
             result = await uploadImage(file);
         } else {

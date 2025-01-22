@@ -25,15 +25,7 @@ const viewRouter = require('./src/routes/viewRouter');
 //middlewares
 app.use(express.json());
 app.use(morgan('dev'));
-app.use(
-    cors({
-        origin: 'http://localhost:3002',
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: true,
-        maxAge: 86400,
-    })
-);
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

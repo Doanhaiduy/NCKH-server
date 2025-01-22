@@ -27,8 +27,6 @@ const handleCache = async (key) => {
     }
     const value = await redisClient.get(key);
     if (value) {
-        console.log('Get data from cache', key);
-        console.log('Value:', JSON.parse(value || ''));
         return JSON.parse(value);
     }
     return null;

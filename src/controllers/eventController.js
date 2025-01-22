@@ -50,7 +50,6 @@ const createQRCode = async (data) => {
         const finalQRCodeBase64 = canvas.toDataURL();
         // const qrCodeUrl = await uploadQRBase64(qrBase64, data.eventCode);
         const qrCodeUrl = await uploadQRBase64(finalQRCodeBase64, data.eventCode);
-        console.log('qrCodeUrl', qrCodeUrl);
 
         return {
             qrCodeUrl,
@@ -78,8 +77,6 @@ const GetEvents = asyncHandler(async (req, res) => {
     }_${typeEvent ? typeEvent : ''}_${semester ? semester : ''}_${year ? year : ''}_${
         user.typeRole === 'user' ? user.id : ''
     }`;
-
-    console.log('key', key);
 
     const value = await handleCache(key);
 
@@ -385,8 +382,6 @@ const UpdateEvent = asyncHandler(async (req, res) => {
     // check if event is ongoing
     const currentDate = new Date();
     if (currentDate > event.startAt && currentDate < event.endAt) {
-        console.log('endAt', event.endAt);
-        console.log('startAt', event.startAt);
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Cannot update event while it is ongoing');
     }
 
@@ -827,8 +822,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
     if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'User not found');
     }
-
-    if (userReq.typeRole === 'user' && userReq.id !== user.id) {
+    if (userReq.typeRole === 'user' && userReq.id !== user._id.toString()) {
         throw new ApiError(StatusCodes.FORBIDDEN, 'You are not allowed to access this route');
     }
 

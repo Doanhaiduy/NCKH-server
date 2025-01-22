@@ -36,7 +36,6 @@ const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
         for (let chunk of chunks) {
             try {
                 let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-                console.log(ticketChunk);
                 tickets.push(...ticketChunk);
             } catch (error) {
                 console.error(error);
@@ -184,7 +183,6 @@ const createNotificationHandler = async ({ sender, getReceiver, message, type, d
 
     const somePushTokens = notification.receiver.map((receiver) => receiver.expoPushToken);
 
-    console.log(somePushTokens);
     await PushNotification({ data: { title: message, description }, somePushTokens });
 
     return notification;
@@ -249,11 +247,8 @@ const ReadNotification = asyncHandle(async (req, res) => {
     }
 
     notification.readBy.push({ readerId: userId, readAt: Date.now() });
-    console.log('====BUG====', notification);
 
     await notification.save();
-
-    // console.log('====BUG====', notification, userId);
 
     res.status(StatusCodes.OK).json({
         status: 'success',
