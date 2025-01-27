@@ -12,12 +12,14 @@ const defaultOptions = {
 
 mongoose.Schema.defaultOptions = defaultOptions;
 mongoose.plugin(slug);
+mongoose.set('strictQuery', false);
 
 const connectDB = async () => {
     try {
         const DB_URI =
             process.env.NODE_ENV === 'development' ? process.env.MONGO_URI_LOCAL : process.env.MONGO_URI_PRODUCTION;
         const connect = await mongoose.connect(DB_URI);
+        console.log(`MongoDB connected: ${connect.connection.host}`);
         await initializeSemesterYears();
         await initializedRoles();
     } catch (error) {

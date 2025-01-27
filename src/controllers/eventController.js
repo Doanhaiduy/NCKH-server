@@ -128,19 +128,17 @@ const GetEvents = asyncHandler(async (req, res) => {
         }
     }
 
-    let events;
+    let events = [];
 
     if (status === 'active') {
         if (user.typeRole === 'user') {
             events = await EventModel.find(query)
-                .select('name startAt endAt eventCode createdAt thumbnail typeEvent')
+                .select('name startAt endAt eventCode createdAt thumbnail typeEvent post')
                 .populate('attendeesList', 'user')
-                .populate('registeredAttendees', 'id username fullName email')
-                .populate('post', 'title')
+                .populate('registeredAttendees', '_id username fullName email')
                 .sort({ createdAt: -1 })
                 .limit(limit)
-                .skip(skip)
-                .lean();
+                .skip(skip);
 
             events = events.filter((event) => {
                 if (event.typeEvent === 'mandatory') {
@@ -151,7 +149,7 @@ const GetEvents = asyncHandler(async (req, res) => {
                     const isInAttendeesList = !event.attendeesList.some((attendee) => {
                         return attendee.user.toString() === user.id;
                     });
-                    const isInRegisteredAttendees = event.registeredAttendees.some((attendee) => {
+                    const isInRegisteredAttendees = event?.registeredAttendees.some((attendee) => {
                         return attendee.id === user.id;
                     });
 
@@ -161,9 +159,8 @@ const GetEvents = asyncHandler(async (req, res) => {
         }
     } else {
         events = await EventModel.find(query)
-            .select('name startAt endAt eventCode createdAt thumbnail typeEvent')
+            .select('name startAt endAt eventCode createdAt thumbnail typeEvent post')
             .populate('attendeesList', 'user')
-            .populate('post', 'title')
             .sort({ createdAt: -1 })
             .limit(limit)
             .skip(skip)
@@ -626,6 +623,17 @@ const RegisterEvent = asyncHandler(async (req, res) => {
 
     if (event.registeredAttendees.some((attendee) => attendee.id === user.id)) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'You have already registered for this event');
+    }
+
+    const currentTime = new Date().getTime();
+    const eventStartTime = new Date(event.startAt).getTime();
+    const timeUntilEvent = eventStartTime - currentTime;
+
+    if (timeUntilEvent <= 30 * 60 * 1000) {
+        throw new ApiError(
+            StatusCodes.BAD_REQUEST,
+            'You can only register for this event 30 minutes before the event starts'
+        );
     }
 
     event.registeredAttendees.push(user.id);

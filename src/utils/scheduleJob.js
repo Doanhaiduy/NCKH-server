@@ -3,9 +3,9 @@ const { createNotificationHandler } = require('../controllers/notificationContro
 const EventModel = require('../models/eventModel');
 const { getAllUserIds } = require('../services/userService');
 
-const scheduleJobNotification = ({ sender, getReceiver, message, type, description, dateTime }) => {
+const scheduleJobNotification = ({ sender, getReceiver, message, type, description, dateTime, actionId }) => {
     schedule.scheduleJob(dateTime, () => {
-        createNotificationHandler({ sender, getReceiver, message, type, description });
+        createNotificationHandler({ sender, getReceiver, message, type, description, actionId });
     });
 };
 
@@ -58,6 +58,7 @@ const scheduleEventNotifications = ({ eventId, startAt, name, author }) => {
             type: 'event',
             description: `Sự kiện ${name} vừa bắt đầu. Hãy tham gia ngay để không bỏ lỡ bất kỳ nội dung quan trọng nào!`,
             dateTime: new Date(eventStartTime),
+            actionId: eventId,
         });
     } else {
         console.log(`Lên lịch thông báo trước 30 phút và khi sự kiện ${name} bắt đầu.`);
@@ -78,6 +79,7 @@ const scheduleEventNotifications = ({ eventId, startAt, name, author }) => {
             type: 'event',
             description: `Sự kiện ${name} vừa bắt đầu. Hãy tham gia ngay để không bỏ lỡ bất kỳ nội dung quan trọng nào!`,
             dateTime: new Date(eventStartTime),
+            actionId: eventId,
         });
     }
 };
@@ -97,7 +99,7 @@ const scheduleTrainingPointGradeNotifications = ({ startAt, name, author }) => {
 
         scheduleJobNotification({
             sender: author,
-            getReceiver: getTrainingPointGradeReceivers,
+            getReceiver: () => getTrainingPointGradeReceivers(),
             message: `Đánh giá điểm rèn luyện "${name}" sẽ bắt đầu trong ít phút!`,
             type: 'training-point',
             description: `Thời gian đánh giá điểm rèn luyện "${name}" sắp bắt đầu. Hãy kiểm tra và chuẩn bị đầy đủ trước khi đánh giá!`,
@@ -107,7 +109,7 @@ const scheduleTrainingPointGradeNotifications = ({ startAt, name, author }) => {
         // Thông báo bắt đầu
         scheduleJobNotification({
             sender: author,
-            getReceiver: getTrainingPointGradeReceivers,
+            getReceiver: () => getTrainingPointGradeReceivers(),
             message: `Đánh giá điểm rèn luyện "${name}" đã bắt đầu!`,
             type: 'training-point',
             description: `Thời gian đánh giá điểm rèn luyện "${name}" đã mở. Hãy tham gia đánh giá ngay!`,
@@ -119,7 +121,7 @@ const scheduleTrainingPointGradeNotifications = ({ startAt, name, author }) => {
 
         scheduleJobNotification({
             sender: author,
-            getReceiver: getTrainingPointGradeReceivers,
+            getReceiver: () => getTrainingPointGradeReceivers(),
             message: `Đánh giá điểm rèn luyện "${name}" sẽ bắt đầu sau 30 phút.`,
             type: 'training-point',
             description: `Thời gian đánh giá điểm rèn luyện "${name}" sắp bắt đầu. Hãy kiểm tra và chuẩn bị đầy đủ trước khi đánh giá!`,
@@ -129,7 +131,7 @@ const scheduleTrainingPointGradeNotifications = ({ startAt, name, author }) => {
         // Lên lịch thông báo khi bắt đầu
         scheduleJobNotification({
             sender: author,
-            getReceiver: getTrainingPointGradeReceivers,
+            getReceiver: () => getTrainingPointGradeReceivers(),
             message: `Đánh giá điểm rèn luyện "${name}" đã bắt đầu!`,
             type: 'training-point',
             description: `Thời gian đánh giá điểm rèn luyện "${name}" đã mở. Hãy tham gia đánh giá ngay!`,

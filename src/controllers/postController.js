@@ -103,21 +103,26 @@ const GetPostById = asyncHandler(async (req, res) => {
                 const register = event.registeredAttendees.find(
                     (attendee) => attendee.toString() === user.id.toString()
                 );
-                if (!register) {
-                    typeAction = 'register';
-                } else {
-                    typeAction = 'unregister';
-                }
-
-                if (event.registeredAttendees.length === event.semesterYear.maxAttendees) {
-                    typeAction = 'full';
-                }
-
                 const currentTime = new Date().getTime();
                 const eventStartTime = new Date(event.startAt).getTime();
                 const timeUntilEvent = eventStartTime - currentTime;
-                if (timeUntilEvent <= 30 * 60 * 1000) {
-                    typeAction = 'expired';
+
+                if (!register) {
+                    typeAction = 'register';
+
+                    if (event.registeredAttendees.length === event.maxAttendees) {
+                        typeAction = 'full';
+                    }
+
+                    if (timeUntilEvent <= 30 * 60 * 1000) {
+                        typeAction = 'expired';
+                    }
+                } else {
+                    typeAction = 'unregister';
+
+                    if (timeUntilEvent <= 30 * 60 * 1000) {
+                        typeAction = 'preventUnregister';
+                    }
                 }
 
                 const attendee = event.attendeesList.find((attendee) => {

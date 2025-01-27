@@ -31,6 +31,10 @@ const notificationSchema = new mongoose.Schema(
             enum: ['system', 'reminder', 'news', 'activity', 'other', 'event', 'training-point', 'grading-period'],
             default: 'system',
         },
+        actionId: {
+            type: mongoose.Schema.ObjectId,
+            default: null,
+        },
 
         readBy: [
             {

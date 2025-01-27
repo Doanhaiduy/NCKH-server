@@ -64,6 +64,7 @@ const Login = asyncHandler(async (req, res) => {
                     accessToken,
                     refreshToken,
                     sclassName: sclass.sclassName,
+                    signInAt: new Date(),
                 },
             });
         } else {
@@ -127,6 +128,7 @@ const AdminLogin = asyncHandler(async (req, res) => {
                 accessToken,
                 refreshToken,
                 sclassName: sclass.sclassName,
+                signInAt: new Date(),
             },
         });
     } else {

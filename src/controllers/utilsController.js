@@ -102,7 +102,7 @@ const CreateGradingPeriod = asyncHandler(async (req, res) => {
         scheduleTrainingPointGradeNotifications({
             startAt: gradingPeriod.startDate,
             name: `Học kỳ ${semester} năm ${year}`,
-            author: req.user._id,
+            author: req.user.id,
             receiver: receivers,
         });
     }

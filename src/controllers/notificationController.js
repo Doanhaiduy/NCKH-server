@@ -6,8 +6,14 @@ const UserModel = require('../models/userModel');
 const { Expo } = require('expo-server-sdk');
 const { handleCache, setCache } = require('../configs/redis');
 
+require('dotenv').config();
+
+let expo = new Expo({
+    useFcmV1: true,
+    accessToken: process.env.EXPO_ACCESS_TOKEN,
+});
+
 const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
-    let expo = new Expo();
     let messages = [];
     let countSuccess = 0;
 
@@ -111,7 +117,6 @@ const GetNotificationById = asyncHandle(async (req, res) => {
     if (!notification) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Notification not found');
     }
-
     res.status(StatusCodes.OK).json({
         status: 'success',
         data: notification,
@@ -152,7 +157,7 @@ const GetUserNotifications = asyncHandle(async (req, res) => {
 });
 
 // [POST] /api/v1/notifications
-const createNotificationHandler = async ({ sender, getReceiver, message, type, description }) => {
+const createNotificationHandler = async ({ sender, getReceiver, message, type, description, actionId }) => {
     if (!sender || !getReceiver || !message || !type) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Please fill all the fields');
     }
@@ -176,6 +181,7 @@ const createNotificationHandler = async ({ sender, getReceiver, message, type, d
         message,
         type,
         description,
+        actionId,
     });
 
     await notification.save();
@@ -189,9 +195,16 @@ const createNotificationHandler = async ({ sender, getReceiver, message, type, d
 };
 
 const CreateNotification = asyncHandle(async (req, res) => {
-    const { sender, receiver, message, type, description } = req.body;
+    const { sender, receiver, message, type, description, actionId } = req.body;
 
-    const notification = await createNotificationHandler({ sender, getReceiver: receiver, message, type, description });
+    const notification = await createNotificationHandler({
+        sender,
+        getReceiver: receiver,
+        message,
+        type,
+        description,
+        actionId,
+    });
 
     res.status(StatusCodes.CREATED).json({
         status: 'success',
