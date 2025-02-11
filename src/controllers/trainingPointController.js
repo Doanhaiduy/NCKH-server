@@ -11,12 +11,12 @@ const { handleCache, setCache } = require('../configs/redis');
 const GradingPeriodModel = require('../models/gradingPeriodModel');
 
 const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
-    const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId }).lean();
+    const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
     if (!trainingPoint) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
     }
 
-    const criteriaList = await CriteriaSchema.find({ criteriaCode }).select('_id parent').lean();
+    const criteriaList = await CriteriaSchema.find({ criteriaCode }).select('_id parent');
 
     if (!criteriaList) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Criteria not found');
@@ -32,7 +32,7 @@ const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
                 return criteria._id;
             }
 
-            const parent = await CriteriaSchema.findById(criteria.parent).lean();
+            const parent = await CriteriaSchema.findById(criteria.parent);
             if (parent.parent) {
                 if (trainingPoint.criteria.includes(parent.parent)) {
                     return criteria._id;
@@ -40,7 +40,7 @@ const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
             }
 
             if (parent.parent) {
-                const parentParent = await CriteriaSchema.findById(parent.parent).lean();
+                const parentParent = await CriteriaSchema.findById(parent.parent);
                 if (parentParent.parent) {
                     if (trainingPoint.criteria.includes(parentParent.parent)) {
                         return criteria._id;
@@ -178,7 +178,7 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
         })
         .lean();
 
-    await setCache(key, trainingPoints, 900);
+    await setCache(key, trainingPoints, 120);
 
     res.status(StatusCodes.OK).json({
         status: 'success',

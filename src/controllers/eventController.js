@@ -183,7 +183,7 @@ const GetEvents = asyncHandler(async (req, res) => {
                 next: next_pages,
                 events,
             },
-            900
+            120
         );
     }
 
@@ -227,7 +227,7 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
-    await setCache(key, event, 900);
+    await setCache(key, event, 120);
 
     res.status(200).json({
         status: 'success',
@@ -524,7 +524,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
             next: next_pages,
             attendees: event.attendeesList,
         },
-        900
+        120
     );
 
     res.status(200).json({
@@ -586,7 +586,7 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
             next: next_pages,
             registered: event.registeredAttendees,
         },
-        900
+        120
     );
 
     res.status(200).json({

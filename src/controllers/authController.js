@@ -139,6 +139,7 @@ const AdminLogin = asyncHandler(async (req, res) => {
 // [POST] /api/v1/auth/refresh-token
 const RefreshToken = asyncHandler(async (req, res) => {
     const refreshToken = req.headers.token.split(' ')[1];
+    console.log(refreshToken);
     if (!refreshToken) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }
@@ -223,7 +224,7 @@ const ForgotPassword = asyncHandler(async (req, res) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: req.body.email,
-        subject: 'Reset password',
+        subject: `Đổi mật khẩu cho tài khoản ${req.body.email}`,
         text: `Mã OTP của bạn là: ${otp}`,
     };
 

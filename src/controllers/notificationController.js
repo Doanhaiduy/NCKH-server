@@ -33,6 +33,19 @@ const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
             title: data.title,
             body: data.description,
             data: { withSome: 'data' },
+            priority: 'high',
+            notification: {
+                title: data.title,
+                body: data.description,
+            },
+            android: {
+                channelId: 'ntu_student_channel_v1',
+                priority: 'high',
+                notification: {
+                    title: data.title,
+                    body: data.description,
+                },
+            },
         });
     }
 
@@ -93,7 +106,7 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
                 next: next_pages,
                 notifications,
             },
-            900
+            120
         );
     }
 

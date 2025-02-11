@@ -32,7 +32,7 @@ const handleCache = async (key) => {
     return null;
 };
 
-const setCache = async (key, value, time) => {
+const setCache = async (key, value, time = 120) => {
     if (process.env.NODE_ENV === 'development') {
         return null;
     }

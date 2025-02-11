@@ -62,7 +62,7 @@ const GetUsers = asyncHandler(async (req, res) => {
                 next: next_pages,
                 users,
             },
-            900
+            120
         );
     }
 

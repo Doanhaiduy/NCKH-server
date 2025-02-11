@@ -68,7 +68,7 @@ const GetPosts = asyncHandler(async (req, res) => {
                 next: next_pages,
                 posts,
             },
-            900
+            120
         );
     }
 
