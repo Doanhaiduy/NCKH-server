@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Create Students</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-2xl">
+        <h1 class="text-2xl font-bold text-center text-gray-700 mb-6">Bulk
+            Create Students</h1>
+
+        <form id="bulkCreateForm" class="space-y-4">
+            <textarea id="studentsData"
+                placeholder="Enter students data (CSV format: username,fullName,email,className)"
+                class="w-full h-40 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                Create Accounts
+            </button>
+        </form>
+    </div>
+
+    <script>
+
+        document.getElementById('bulkCreateForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const studentRows = document.getElementById('studentsData').value.trim().split("\n");
+            const students = studentRows.map(row => {
+                const [username, fullName, email, className] = row.split(",").map(s => s.trim());
+                return { username, fullName, email, password: email, sclassName: className, avatar: "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/837af364-85e1-44d4-9cbd-380cde9b4426/dc7ptsa-6f96c8d9-aa2e-4d2f-8eb6-819897720a5f.jpg/v1/fill/w_900,h_900,q_75,strp/doraemon_ultra_instinct_by_eddhortillosa_dc7ptsa-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTAwIiwicGF0aCI6IlwvZlwvODM3YWYzNjQtODVlMS00NGQ0LTljYmQtMzgwY2RlOWI0NDI2XC9kYzdwdHNhLTZmOTZjOGQ5LWFhMmUtNGQyZi04ZWI2LTgxOTg5NzcyMGE1Zi5qcGciLCJ3aWR0aCI6Ijw9OTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.XW7K67CSgMbZ3e6GnftEP7LIye05Vn8lJ78jecYVJ4U", role: "SV" };
+            });
+
+            try {
+                const Base_URL = document.location.origin;
+                const token = "<%= accessToken %>";
+                for (const student of students) {
+                    const registerResponse = await fetch(`${Base_URL}/api/v1/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(student)
+                    });
+
+                    if (!registerResponse.ok) {
+                        throw new Error(`Failed to create ${student.username}`);
+                    }
+
+                    const userData = await registerResponse.json();
+                    const userId = userData.data.id;
+
+                    const firstTwoDigits = parseInt(student.username.substring(0, 2));
+                    const startingYear = 2021 + (firstTwoDigits - 63);
+                    const years = Array.from({ length: 5 }, (_, i) => startingYear + i);
+
+                    for (const year of years) {
+                        for (let semester = 1; semester <= 2; semester++) {
+                            await fetch(`${Base_URL}/api/v1/training-points`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ userId, semester, year })
+                            });
+                        }
+                    }
+                }
+
+                alert("All students have been created successfully!");
+                document.getElementById('bulkCreateForm').reset();
+            } catch (error) {
+                console.error(error);
+                alert("Error: " + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

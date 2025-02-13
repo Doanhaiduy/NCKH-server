@@ -12,6 +12,7 @@ const sclassSchema = new mongoose.Schema(
         teacher: {
             type: mongoose.Schema.ObjectId,
             ref: 'User',
+            default: null,
         },
     },
     {

@@ -169,12 +169,15 @@ const Register = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Role is required');
     }
 
-    const hasClass = await sClassSchema.findOne({
+    let hasClass = await sClassSchema.findOne({
         sclassName: req.body.sclassName,
     });
 
     if (!hasClass) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class not found');
+        hasClass = new sClassSchema({
+            sclassName: req.body.sclassName,
+        });
+        await hasClass.save();
     }
     const hasRole = await RoleSchema.findOne({
         roleCode: req.body.role,

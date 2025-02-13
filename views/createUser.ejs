@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Student Account</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center text-gray-700 mb-6">Create
+            Student Account</h1>
+        <form id="createStudentForm" class="space-y-4">
+            <div>
+                <label for="username"
+                    class="block text-sm font-medium text-gray-700">Username
+                    (e.g., 63130263)</label>
+                <input type="text" id="username" name="username" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="fullName"
+                    class="block text-sm font-medium text-gray-700">Full
+                    Name</label>
+                <input type="text" id="fullName" name="fullName" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="email"
+                    class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="email" name="email" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="className"
+                    class="block text-sm font-medium text-gray-700">Class Name
+                    (e.g., 63CNTT-2)</label>
+                <input type="text" id="className" name="className" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">Create
+                Account</button>
+        </form>
+    </div>
+
+    <script>
+
+
+        document.getElementById('createStudentForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            // Lấy dữ liệu từ form
+            const formData = {
+                username: document.getElementById('username').value,
+                fullName: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('email').value,
+                sclassName: document.getElementById('className').value,
+                avatar: "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/837af364-85e1-44d4-9cbd-380cde9b4426/dc7ptsa-6f96c8d9-aa2e-4d2f-8eb6-819897720a5f.jpg/v1/fill/w_900,h_900,q_75,strp/doraemon_ultra_instinct_by_eddhortillosa_dc7ptsa-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTAwIiwicGF0aCI6IlwvZlwvODM3YWYzNjQtODVlMS00NGQ0LTljYmQtMzgwY2RlOWI0NDI2XC9kYzdwdHNhLTZmOTZjOGQ5LWFhMmUtNGQyZi04ZWI2LTgxOTg5NzcyMGE1Zi5qcGciLCJ3aWR0aCI6Ijw9OTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.XW7K67CSgMbZ3e6GnftEP7LIye05Vn8lJ78jecYVJ4U",
+                role: "SV"
+            };
+            const Base_URL = document.location.origin;
+
+            try {
+                // Bước 1: Tạo user
+                const registerResponse = await fetch(`${Base_URL}/api/v1/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!registerResponse.ok) {
+                    const error = await registerResponse.json();
+                    throw new Error(error.message || "Failed to create user");
+                }
+
+                const userData = await registerResponse.json();
+                const userId = userData.data.id; // Điều chỉnh theo response thực tế
+
+                // Bước 2: Tạo bảng điểm rèn luyện
+                const firstTwoDigits = parseInt(formData.username.substring(0, 2));
+                const startingYear = 2021 + (firstTwoDigits - 63); // Tính năm bắt đầu
+                const years = Array.from({ length: 5 }, (_, i) => startingYear + i); // Tạo 5 năm
+
+                // Gửi request tạo training points
+                const token = "<%= accessToken %>";
+                for (const year of years) {
+                    for (let semester = 1; semester <= 2; semester++) {
+                        await fetch(`${Base_URL}/api/v1/training-points`
+                            , {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                },
+                                body: JSON.stringify({
+                                    userId: userId,
+                                    semester: semester,
+                                    year: year
+                                })
+                            });
+                    }
+                }
+
+                alert("Tạo tài khoản và bảng điểm thành công!");
+                // reset form
+                document.getElementById('createStudentForm').reset();
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi: " + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>
