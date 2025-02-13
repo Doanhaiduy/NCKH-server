@@ -196,6 +196,32 @@ const Register = asyncHandler(async (req, res) => {
         sclassName: hasClass._id,
     });
     await user.save();
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: req.body.email,
+        subject: `Thông báo: Tài khoản của bạn đã được tạo thành công`,
+        text: `Xin chào ${req.body.fullName},
+    
+    Chúc mừng bạn đã đăng ký thành công tài khoản trên hệ thống NTU-Student. Dưới đây là thông tin tài khoản của bạn:
+    
+    - **Tên đăng nhập**: ${req.body.username}
+    - **Mật khẩu**: ${req.body.password}
+    
+    Vui lòng đăng nhập vào hệ thống và thay đổi mật khẩu ngay sau khi đăng nhập để đảm bảo an toàn cho tài khoản của bạn.
+    
+    📱 **Tải ứng dụng NTU-Student tại**:  
+    [Google Play Store](https://play.google.com/store/apps/details?id=com.doanhaiduy.mobile)
+    
+    Nếu bạn có bất kỳ câu hỏi hoặc cần hỗ trợ, vui lòng liên hệ với chúng tôi qua email này.
+    
+    Trân trọng,  
+    NTU-Student Team
+        `,
+    };
+
+    await handleSendMail(mailOptions);
+
     res.status(201).json({
         status: 'success',
         data: {
@@ -227,8 +253,20 @@ const ForgotPassword = asyncHandler(async (req, res) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: req.body.email,
-        subject: `Đổi mật khẩu cho tài khoản ${req.body.email}`,
-        text: `Mã OTP của bạn là: ${otp}`,
+        subject: `Xác nhận đổi mật khẩu cho tài khoản ${req.body.email}`,
+        text: `Xin chào ${findUser.fullName},
+    
+    Bạn vừa yêu cầu đổi mật khẩu cho tài khoản NTU-Student.  
+    Vui lòng sử dụng mã OTP dưới đây để xác nhận:
+    
+    🔑 **Mã OTP của bạn**: ${otp}
+    
+    Lưu ý: Mã OTP này có hiệu lực trong vòng **1 phút**.  
+    Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ với chúng tôi để được hỗ trợ.
+    
+    Trân trọng,  
+    **NTU-Student Team**
+        `,
     };
 
     const result = await handleSendMail(mailOptions);
