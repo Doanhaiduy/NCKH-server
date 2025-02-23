@@ -49,6 +49,7 @@ const ROUTES = Object.freeze({
         UPLOAD: '/upload',
         UPLOAD_MULTIPLE: '/upload-multiple',
         GET_NOTIFICATIONS: '/:id/notifications',
+        GET_BY_CLASS_ID: '/class/:classId',
     },
 
     POST: {
@@ -70,6 +71,7 @@ const ROUTES = Object.freeze({
         GET_REGISTERED_ATTENDEES: '/:id/registered-attendees',
         REGISTER_EVENT: '/:id/register',
         UNREGISTER_EVENT: '/:id/unregister',
+        PAST_EVENT: '/past-events',
     },
 
     ATTENDANCE: {
@@ -90,6 +92,9 @@ const ROUTES = Object.freeze({
         UPDATE_CRITERIA_EVIDENCE: '/:criteriaId/update-criteria-evidence',
         GET_CRITERIA_EVIDENCE: '/:criteriaId/criteria-evidence',
         UPDATE_CRITERIA_EVIDENCE_STATUS: '/:evidenceId/update-criteria-evidence-status',
+        GET_OVERVIEW: '/overview',
+        GET_ALL_RESPONSE: '/response/get-all',
+        GET_ALL_RESPONSE_BY_TRAINING_POINT: '/response/:trainingPointId/get-all',
     },
 
     NOTIFICATION: {

@@ -36,11 +36,6 @@ const postSchema = new mongoose.Schema(
             enum: ['news', 'activity'],
             default: 'activity',
         },
-        category: {
-            type: String,
-            enum: ['news', 'activity'],
-            default: 'activity',
-        },
         slug: {
             type: String,
             slug: 'title',
@@ -53,7 +48,7 @@ const postSchema = new mongoose.Schema(
         toJSON: {
             virtuals: true,
         },
-    }
+    },
 );
 
 postSchema.virtual('id').get(function () {

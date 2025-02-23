@@ -25,7 +25,7 @@ const CreateFeedback = asyncHandler(async (req, res) => {
 
 // [GET] /api/v1/feedbacks/:id
 const GetFeedbackById = asyncHandler(async (req, res) => {
-    const feedback = await FeedbackModel.findById(req.params.id).lean();
+    const feedback = await FeedbackModel.findById(req.params.id).populate('user', 'username fullName avatar').lean();
 
     res.status(200).json({
         status: 'success',

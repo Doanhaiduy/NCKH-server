@@ -282,7 +282,6 @@ const ForgotPassword = asyncHandler(async (req, res) => {
             status: 'success',
             data: {
                 email: req.body.email,
-                otp,
                 expiredIn: otpExpire,
             },
         });

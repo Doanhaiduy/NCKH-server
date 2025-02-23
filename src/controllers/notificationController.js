@@ -62,7 +62,7 @@ const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
         }
     })();
     console.log(
-        `Successfully push ${countSuccess} messages, unsuccessfully push ${messages.length - countSuccess} messages`
+        `Successfully push ${countSuccess} messages, unsuccessfully push ${messages.length - countSuccess} messages`,
     );
 });
 
@@ -88,12 +88,16 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
+    if (search) {
+        query.$or = [{ message: { $regex: search, $options: 'i' } }];
+    }
+
     const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
 
     const total_documents = await NotificationModel.countDocuments(query);
 
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     if (notifications.length !== 0) {
         await setCache(
@@ -106,7 +110,7 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
                 next: next_pages,
                 notifications,
             },
-            120
+            120,
         );
     }
 

@@ -18,13 +18,12 @@ const eventSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Please enter your event name'],
             trim: true,
-            maxLength: [50, 'Your event name cannot exceed 50 characters'],
+            maxLength: [500, 'Your event name cannot exceed 500 characters'],
         },
         description: {
             type: String,
             required: [true, 'Please enter your event description'],
             trim: true,
-            maxLength: [500, 'Your event description cannot exceed 500 characters'],
         },
         startAt: {
             type: Date,
@@ -133,7 +132,7 @@ const eventSchema = new mongoose.Schema(
         toJSON: {
             virtuals: true,
         },
-    }
+    },
 );
 
 eventSchema.index({ eventCode: 1 }, { unique: true });

@@ -410,7 +410,7 @@ const UpdateCriteriaScore = asyncHandle(async (req, res) => {
         if (score && score > criteria.maxScore) {
             throw new ApiError(
                 StatusCodes.BAD_REQUEST,
-                `Score is greater than max score of criteria ${criteria.criteriaCode}`
+                `Score is greater than max score of criteria ${criteria.criteriaCode}`,
             );
         }
 
@@ -446,7 +446,7 @@ const UpdateCriteriaScore = asyncHandle(async (req, res) => {
             if (criteria.maxScore != score && score != 0) {
                 throw new ApiError(
                     StatusCodes.BAD_REQUEST,
-                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`,
                 );
             }
         }
@@ -455,7 +455,7 @@ const UpdateCriteriaScore = asyncHandle(async (req, res) => {
             if (criteria.maxScore != score && score != 0) {
                 throw new ApiError(
                     StatusCodes.BAD_REQUEST,
-                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`,
                 );
             }
         }
@@ -509,11 +509,20 @@ const UpdateCriteriaScoreTemp = asyncHandle(async (req, res) => {
             throw new ApiError(StatusCodes.BAD_REQUEST, 'Criteria is not a leaf node');
         }
 
-        if (score && score > criteria.maxScore) {
-            throw new ApiError(
-                StatusCodes.BAD_REQUEST,
-                `Score is greater than max score of criteria ${criteria.criteriaCode}`
-            );
+        if (score && score > +criteria.maxScore) {
+            if (+criteria.maxScore >= 0) {
+                throw new ApiError(
+                    StatusCodes.BAD_REQUEST,
+                    `Score is greater than max score of criteria ${criteria.criteriaCode}`,
+                );
+            } else {
+                if (-criteria.maxScore < score) {
+                    throw new ApiError(
+                        StatusCodes.BAD_REQUEST,
+                        `Score is greater than max score of criteria ${criteria.criteriaCode}`,
+                    );
+                }
+            }
         }
 
         if (criteriaOneValue.includes(criteria.criteriaCode) && score != 0) {
@@ -546,7 +555,7 @@ const UpdateCriteriaScoreTemp = asyncHandle(async (req, res) => {
             if (criteria.maxScore != score && score != 0) {
                 throw new ApiError(
                     StatusCodes.BAD_REQUEST,
-                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`,
                 );
             }
         }
@@ -555,11 +564,17 @@ const UpdateCriteriaScoreTemp = asyncHandle(async (req, res) => {
             if (criteria.maxScore != score && score != 0) {
                 throw new ApiError(
                     StatusCodes.BAD_REQUEST,
-                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`
+                    `Score of criteria ${criteria.criteriaCode} must be equal ${criteria.maxScore}`,
                 );
             }
         }
-        criteria.tempScore = score;
+
+        if (!Number(+score)) {
+            criteria.tempScore = 0;
+        } else {
+            criteria.tempScore = score;
+        }
+
         await criteria.save({
             runCustomPreSave: true,
             isTemplateScore: true,
@@ -693,6 +708,159 @@ const UpdateCriteriaEvidenceStatus = asyncHandle(async (req, res) => {
     });
 });
 
+const GetAllResponse = asyncHandle(async (req, res) => {
+    const responses = await ResponseSchema.find().lean();
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: responses,
+    });
+});
+
+function flattenCriteria(criteriaArray) {
+    let result = [];
+
+    function extractCriteria(criteria) {
+        if (criteria.evidence) {
+            result.push({
+                ...criteria.evidence,
+                criteriaId: criteria._id,
+            });
+        }
+
+        if (criteria.subCriteria && criteria.subCriteria.length > 0) {
+            criteria.subCriteria.forEach(extractCriteria);
+        }
+    }
+
+    criteriaArray.forEach(extractCriteria);
+    return result;
+}
+
+const GetAllResponseByTrainingPoint = asyncHandle(async (req, res) => {
+    const { trainingPointId } = req.params;
+
+    const trainingPoint = await TrainingPointSchema.findById(trainingPointId)
+        .populate({
+            path: 'semesterYear',
+            select: 'criteria',
+        })
+        .populate({
+            path: 'criteria',
+            populate: {
+                path: 'subCriteria',
+                populate: {
+                    path: 'subCriteria',
+                    populate: {
+                        path: 'evidence',
+                        model: 'Response',
+                        select: '_id name data status createdAt',
+                    },
+                },
+            },
+        })
+        .populate({
+            path: 'criteria',
+            populate: {
+                path: 'subCriteria',
+                populate: {
+                    path: 'evidence',
+                    model: 'Response',
+                    select: '_id name data',
+                },
+            },
+        })
+        .lean();
+
+    if (!trainingPoint) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
+    }
+
+    const response = flattenCriteria(trainingPoint.criteria);
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: {
+            total: response.length,
+            data: response,
+        },
+    });
+});
+
+const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
+    let { semester, year } = req.query;
+
+    const query = {};
+
+    if (!semester) {
+        semester = 1;
+    }
+    if (!year) {
+        const currYear = new Date().getFullYear();
+        year = currYear;
+    }
+
+    const semesterYear = await SemesterYearModel.findOne({ semester, year }).lean();
+
+    if (!semesterYear) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
+    }
+
+    query.semesterYear = semesterYear._id;
+
+    const trainingPoints = await TrainingPointSchema.find(query)
+        .select('user tempScore totalScore status semesterYear')
+        .populate({
+            path: 'user',
+            select: 'name sclassName fullName',
+            populate: {
+                path: 'sclassName',
+                select: 'sclassName',
+            },
+        })
+        .populate('semesterYear', 'semester year -_id')
+        .lean();
+
+    const response = trainingPoints.map((trainingPoint) => {
+        return {
+            user: trainingPoint.user.name,
+            fullName: trainingPoint.user.fullName,
+            sclassName: trainingPoint.user.sclassName.sclassName,
+            semester: trainingPoint.semesterYear.semester,
+            year: trainingPoint.semesterYear.year,
+            status: trainingPoint.status,
+            tempScore: trainingPoint.tempScore,
+            totalScore: trainingPoint.totalScore,
+        };
+    });
+
+    const groupedByClass = response.reduce((acc, curr) => {
+        const className = curr.sclassName;
+        if (!acc[className]) {
+            acc[className] = [];
+        }
+        acc[className].push(curr);
+        return acc;
+    }, {});
+
+    const groupedResponse = Object.keys(groupedByClass).map((className) => ({
+        className,
+        total: groupedByClass[className].length,
+        totalAssessment: groupedByClass[className].filter(
+            (student) => student.tempScore !== 0 && student.status === 'pending',
+        ).length,
+        totalNoAssessment: groupedByClass[className].filter(
+            (student) => student.tempScore === 0 && student.status === 'pending',
+        ).length,
+        totalApprove: groupedByClass[className].filter((student) => student.status !== 'pending').length,
+        students: groupedByClass[className],
+    }));
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: groupedResponse,
+    });
+});
 module.exports = {
     getIdCriteria,
     CreateTrainingPoint,
@@ -706,4 +874,7 @@ module.exports = {
     GetCriteriaEvidence,
     updateCriteriaScore,
     UpdateCriteriaEvidenceStatus,
+    GetAllResponse,
+    GetAllResponseByTrainingPoint,
+    GetOverviewTrainingPointList,
 };

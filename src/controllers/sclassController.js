@@ -7,6 +7,11 @@ const { StatusCodes } = require('http-status-codes');
 // [GET] /api/v1/classes/get-all
 const GetAllClasses = asyncHandle(async (req, res) => {
     const classes = await ClassSchema.find().populate('teacher', 'fullName email').lean();
+    const students = await UserSchema.find({ sclassName: { $in: classes.map((c) => c._id) } }).lean();
+
+    classes.forEach((c) => {
+        c.totalStudents = students.filter((s) => s.sclassName.toString() === c._id.toString()).length;
+    });
     res.status(200).json({
         status: 'success',
         data: classes,

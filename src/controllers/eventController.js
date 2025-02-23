@@ -32,7 +32,7 @@ const createQRCode = async (data) => {
                     dark: '#0c339c',
                     light: '#fff',
                 },
-            }
+            },
         );
         const qrImage = await loadImage(qrBase64);
         const logoImage = await loadImage(require('path').resolve(__dirname, '../assets/images/icon.png'));
@@ -62,7 +62,7 @@ const createQRCode = async (data) => {
 
 // [GET] /api/v1/events/get-all
 const GetEvents = asyncHandler(async (req, res) => {
-    let { page, size, status, time, search, semester, year, typeEvent } = req.query;
+    let { page, size, status, time, search, semester, year, typeEvent, month, sortDate } = req.query;
     if (!page || page < 1) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -104,8 +104,20 @@ const GetEvents = asyncHandler(async (req, res) => {
         query.startAt = { $gt: currentDate };
     }
 
+    if (month) {
+        const startMonth = new Date(currentDate.getFullYear(), month - 1, 1);
+        const endMonth = new Date(currentDate.getFullYear(), month, 0);
+        query.startAt = { $gte: startMonth, $lte: endMonth };
+    }
+
     if (search) {
-        query.$or = [{ name: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }];
+        query.$or = [{ name: { $regex: search, $options: 'i' } }];
+    }
+
+    let sort = {};
+
+    if (['asc', 'desc'].includes(sortDate)) {
+        sort = { startAt: sortDate === 'asc' ? 1 : -1 };
     }
 
     const currentSY = getCurrentSemesterYear();
@@ -133,10 +145,10 @@ const GetEvents = asyncHandler(async (req, res) => {
     if (status === 'active') {
         if (user.typeRole === 'user') {
             events = await EventModel.find(query)
-                .select('name startAt endAt eventCode createdAt thumbnail typeEvent post')
+                .select('name startAt endAt eventCode createdAt thumbnail typeEvent post location')
                 .populate('attendeesList', 'user')
                 .populate('registeredAttendees', '_id username fullName email')
-                .sort({ createdAt: -1 })
+                .sort(sort)
                 .limit(limit)
                 .skip(skip);
 
@@ -159,18 +171,18 @@ const GetEvents = asyncHandler(async (req, res) => {
         }
     } else {
         events = await EventModel.find(query)
-            .select('name startAt endAt eventCode createdAt thumbnail typeEvent post')
+            .select('name startAt endAt eventCode createdAt thumbnail typeEvent post location')
             .populate('attendeesList', 'user')
-            .sort({ createdAt: -1 })
             .limit(limit)
             .skip(skip)
+            .sort(sort)
             .lean();
     }
 
     const total_documents =
         status === 'active' && user.typeRole === 'user' ? events.length : await EventModel.countDocuments(query);
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     if (events.length !== 0) {
         await setCache(
@@ -183,7 +195,7 @@ const GetEvents = asyncHandler(async (req, res) => {
                 next: next_pages,
                 events,
             },
-            120
+            120,
         );
     }
 
@@ -218,8 +230,9 @@ const getEventByIdOrCode = asyncHandler(async (req, res) => {
     }
 
     const event = await EventModel.findOne(query)
-        .select('-updatedAt -__v -attendeesList -registeredAttendees -semesterYear')
+        .select('-updatedAt -__v -attendeesList -registeredAttendees')
         .populate('author', 'fullName email')
+        .populate('semesterYear', 'semester year -_id')
         .populate('post', 'title')
         .lean();
 
@@ -512,7 +525,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
 
     const total_documents = event.attendeesList.length;
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     await setCache(
         key,
@@ -524,7 +537,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
             next: next_pages,
             attendees: event.attendeesList,
         },
-        120
+        120,
     );
 
     res.status(200).json({
@@ -574,7 +587,7 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
 
     const total_documents = event.registeredAttendees.length;
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     await setCache(
         key,
@@ -586,7 +599,7 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
             next: next_pages,
             registered: event.registeredAttendees,
         },
-        120
+        120,
     );
 
     res.status(200).json({
@@ -632,7 +645,7 @@ const RegisterEvent = asyncHandler(async (req, res) => {
     if (timeUntilEvent <= 30 * 60 * 1000) {
         throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            'You can only register for this event 30 minutes before the event starts'
+            'You can only register for this event 30 minutes before the event starts',
         );
     }
 
@@ -864,7 +877,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
 
     const total_documents = attendances.length;
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     res.status(200).json({
         status: 'success',
@@ -875,6 +888,63 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
             previous: previous_pages,
             next: next_pages,
             attendances,
+        },
+    });
+});
+
+const getPastEvents = asyncHandler(async (req, res) => {
+    let { page, size, type } = req.query;
+    if (!page || page < 1) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    let query = {};
+
+    if (['mandatory', 'optional'].includes(type)) {
+        query.typeEvent = type;
+    }
+    const currentDate = new Date();
+
+    query.endAt = { $lt: currentDate };
+
+    const events = await EventModel.find(query)
+        .select('name startAt endAt eventCode createdAt thumbnail typeEvent post maxAttendees')
+        .populate('attendeesList', 'user')
+        .populate('registeredAttendees', '_id username fullName email')
+        .limit(limit)
+        .skip(skip)
+        .lean();
+    // sap xep theo so luong sinh vien tham gia nhieu nhat
+    const eventSorted = events.sort((a, b) => b.attendeesList.length - a.attendeesList.length);
+    const eventResponse = eventSorted.map((event) => {
+        return {
+            name: event.name,
+            startAt: event.startAt,
+            endAt: event.endAt,
+            eventCode: event.eventCode,
+            createdAt: event.createdAt,
+            thumbnail: event.thumbnail,
+            typeEvent: event.typeEvent,
+            post: event.post,
+            maxAttendees: event.maxAttendees,
+            numberOfAttendees: event?.attendeesList?.length,
+            numberOfRegisteredAttendees: event?.registeredAttendees?.length || 0,
+        };
+    });
+    const total_documents = await EventModel.countDocuments(query);
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            events: eventResponse,
         },
     });
 });
@@ -892,4 +962,5 @@ module.exports = {
     GetRegisteredAttendeesList,
     RegisterEvent,
     UnregisterEvent,
+    getPastEvents,
 };

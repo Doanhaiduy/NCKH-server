@@ -45,6 +45,17 @@ const userSchema = new mongoose.Schema(
             minLength: [6, 'Your password must be at least 6 characters'],
             select: false,
         },
+        dob: {
+            type: Date,
+            required: [true, 'Please enter your dob'],
+            default: '2000-01-01',
+        },
+        gender: {
+            type: Number,
+            enum: [0, 1],
+            default: 1,
+        },
+
         sclassName: {
             type: mongoose.Schema.ObjectId,
             ref: 'Class',
@@ -79,8 +90,12 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        lastLogin: {
+            type: Date,
+            default: null,
+        },
     },
-    { timestamps: true, versionKey: false }
+    { timestamps: true, versionKey: false },
 );
 
 userSchema.index({ username: 1 }, { unique: true });

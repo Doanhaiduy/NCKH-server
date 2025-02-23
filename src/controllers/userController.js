@@ -41,6 +41,7 @@ const GetUsers = asyncHandler(async (req, res) => {
     const users = await UserModel.find(query)
         .select('-password -__v')
         .populate('role', 'name')
+        .populate('sclassName', 'sclassName _id teacher')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip)
@@ -49,7 +50,7 @@ const GetUsers = asyncHandler(async (req, res) => {
     const total_documents = await UserModel.countDocuments(query);
 
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     if (users.length !== 0) {
         await setCache(
@@ -62,7 +63,7 @@ const GetUsers = asyncHandler(async (req, res) => {
                 next: next_pages,
                 users,
             },
-            120
+            120,
         );
     }
 
@@ -206,6 +207,83 @@ const UploadMultiple = asyncHandler(async (req, res) => {
     });
 });
 
+const GetUsersByClassId = asyncHandler(async (req, res) => {
+    const { classId } = req.params;
+    let { page, size, search } = req.query;
+    if (!page) page = 1;
+    if (!size) size = 10;
+
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid class id');
+    }
+
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const key = `users_${page ? page : ''}_${size ? size : ''}_${search ? search : ''}`;
+
+    const value = await handleCache(key);
+
+    if (value) {
+        return res.status(200).json({
+            status: 'success',
+            data: value,
+        });
+    }
+
+    const query = {};
+
+    query.sclassName = classId;
+
+    if (search) {
+        query.$or = [
+            { fullName: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { username: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    const users = await UserModel.find(query)
+        .select('username fullName email avatar')
+        .populate('role', 'name')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .lean();
+
+    const total_documents = await UserModel.countDocuments(query);
+
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
+
+    if (users.length !== 0) {
+        await setCache(
+            key,
+            {
+                total: total_documents,
+                page: page,
+                size: size,
+                previous: previous_pages,
+                next: next_pages,
+                users,
+            },
+            120,
+        );
+    }
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: page,
+            size: size,
+            previous: previous_pages,
+            next: next_pages,
+            users,
+        },
+    });
+});
+
 module.exports = {
     GetUsers,
     UploadSingle,
@@ -213,4 +291,5 @@ module.exports = {
     getUserByIdOrUsername,
     UpdateUser,
     DeleteUser,
+    GetUsersByClassId,
 };

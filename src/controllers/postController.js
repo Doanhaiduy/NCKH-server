@@ -8,7 +8,7 @@ const { handleCache, setCache } = require('../configs/redis');
 
 // [GET] /api/v1/posts/get-all
 const GetPosts = asyncHandler(async (req, res) => {
-    let { page, size, category, time, search, status } = req.query;
+    let { page, size, time, search, status, type, sortDate } = req.query;
 
     if (!page) page = 1;
     if (!size) size = 10;
@@ -19,7 +19,7 @@ const GetPosts = asyncHandler(async (req, res) => {
     const query = {};
     const currentDate = new Date();
 
-    const key = `posts_${page ? page : ''}_${size ? size : ''}_${category ? category : ''}_${search ? search : ''}`;
+    const key = `posts_${page ? page : ''}_${size ? size : ''}_${search ? search : ''}`;
 
     const value = await handleCache(key);
 
@@ -30,12 +30,18 @@ const GetPosts = asyncHandler(async (req, res) => {
         });
     }
 
-    if (['news', 'activity'].includes(category)) {
-        query.category = category;
+    if (['news', 'activity'].includes(type)) {
+        query.type = type;
     }
 
     if (search) {
-        query.$or = [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }];
+        query.$or = [{ title: { $regex: search, $options: 'i' } }];
+    }
+
+    let sort = {};
+
+    if (['asc', 'desc'].includes(sortDate)) {
+        sort = { createdAt: sortDate === 'asc' ? 1 : -1 };
     }
 
     query.status = status ? status : 'published';
@@ -45,9 +51,9 @@ const GetPosts = asyncHandler(async (req, res) => {
     }
 
     const posts = await PostModel.find(query)
-        .select('-content -status  -updatedAt -__v')
+        .select('-content -updatedAt -__v')
         .populate('author', 'fullName email')
-        .sort({ createdAt: -1 })
+        .sort(sort)
         .limit(limit)
         .skip(skip)
         .lean();
@@ -55,7 +61,7 @@ const GetPosts = asyncHandler(async (req, res) => {
     const total_documents = await PostModel.countDocuments(query);
 
     const previous_pages = page - 1;
-    const next_pages = Math.ceil((total_documents - skip) / size);
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     if (posts.length !== 0) {
         await setCache(
@@ -68,7 +74,7 @@ const GetPosts = asyncHandler(async (req, res) => {
                 next: next_pages,
                 posts,
             },
-            120
+            120,
         );
     }
 
@@ -101,7 +107,7 @@ const GetPostById = asyncHandler(async (req, res) => {
                 .populate('semesterYear');
             if (event && event.startAt > new Date()) {
                 const register = event.registeredAttendees.find(
-                    (attendee) => attendee.toString() === user.id.toString()
+                    (attendee) => attendee.toString() === user.id.toString(),
                 );
                 const currentTime = new Date().getTime();
                 const eventStartTime = new Date(event.startAt).getTime();
@@ -156,7 +162,6 @@ const CreatePost = asyncHandler(async (req, res) => {
         thumbnail: req.body.thumbnail,
         status: req.body.status,
         type: req.body.type,
-        category: req.body.category,
     });
 
     await post.save();
