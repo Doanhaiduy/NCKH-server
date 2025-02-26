@@ -17,12 +17,13 @@ const {
     GetAllResponse,
     GetAllResponseByTrainingPoint,
     GetOverviewTrainingPointList,
+    GetTrainingPointByClass,
 } = require('../controllers/trainingPointController');
 const upload = require('../configs/multer');
 
 Router.get(ROUTES.TRAINING_POINT.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN])], GetAllTrainingPoint);
-// GetOverviewTrainingPointList
 Router.get(ROUTES.TRAINING_POINT.GET_OVERVIEW, [checkAuth, checkRole([ROLES.ADMIN])], GetOverviewTrainingPointList);
+Router.get(ROUTES.TRAINING_POINT.GET_BY_CLASS, [checkAuth, checkRole([ROLES.ADMIN])], GetTrainingPointByClass);
 Router.get(ROUTES.TRAINING_POINT.GET_ALL_RESPONSE, [checkAuth, checkRole([ROLES.ADMIN])], GetAllResponse);
 Router.get(
     ROUTES.TRAINING_POINT.GET_ALL_RESPONSE_BY_TRAINING_POINT,

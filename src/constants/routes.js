@@ -71,7 +71,8 @@ const ROUTES = Object.freeze({
         GET_REGISTERED_ATTENDEES: '/:id/registered-attendees',
         REGISTER_EVENT: '/:id/register',
         UNREGISTER_EVENT: '/:id/unregister',
-        PAST_EVENT: '/past-events',
+        GET_PAST_EVENT: '/past-events',
+        GET_TODAY_EVENTS: '/today-events',
     },
 
     ATTENDANCE: {
@@ -95,6 +96,7 @@ const ROUTES = Object.freeze({
         GET_OVERVIEW: '/overview',
         GET_ALL_RESPONSE: '/response/get-all',
         GET_ALL_RESPONSE_BY_TRAINING_POINT: '/response/:trainingPointId/get-all',
+        GET_BY_CLASS: '/get-by-class/:classId',
     },
 
     NOTIFICATION: {
@@ -113,6 +115,15 @@ const ROUTES = Object.freeze({
         ID: '/:id',
         CREATE: '/',
         DELETE: '/:id',
+    },
+
+    // statistics
+    STATISTICS: {
+        ROOT: '/statistics',
+        GET_REGISTERED_EVENTS: '/registered-events',
+        GET_ATTENDEES_EVENTS: '/attendees-events',
+        GET_OVERVIEW_DASHBOARD: '/overview-dashboard',
+        GET_TOP_STUDENTS: '/top-students',
     },
 
     UTILS: {

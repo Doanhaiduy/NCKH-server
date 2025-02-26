@@ -104,8 +104,8 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
             key,
             {
                 total: total_documents,
-                page: page,
-                size: size,
+                page: +page,
+                size: +size,
                 previous: previous_pages,
                 next: next_pages,
                 notifications,
@@ -118,8 +118,8 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             notifications,

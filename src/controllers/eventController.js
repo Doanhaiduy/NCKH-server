@@ -189,8 +189,8 @@ const GetEvents = asyncHandler(async (req, res) => {
             key,
             {
                 total: total_documents,
-                page: page,
-                size: size,
+                page: +page,
+                size: +size,
                 previous: previous_pages,
                 next: next_pages,
                 events,
@@ -203,8 +203,8 @@ const GetEvents = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             events,
@@ -531,8 +531,8 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
         key,
         {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             attendees: event.attendeesList,
@@ -544,8 +544,8 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             attendees: event.attendeesList,
@@ -593,8 +593,8 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
         key,
         {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             registered: event.registeredAttendees,
@@ -606,8 +606,8 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             registered: event.registeredAttendees,
@@ -883,8 +883,8 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             attendances,
@@ -892,7 +892,7 @@ const GetAttendancesByUser = asyncHandler(async (req, res) => {
     });
 });
 
-const getPastEvents = asyncHandler(async (req, res) => {
+const GetPastEvents = asyncHandler(async (req, res) => {
     let { page, size, type } = req.query;
     if (!page || page < 1) page = 1;
     if (!size) size = 10;
@@ -940,11 +940,55 @@ const getPastEvents = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             events: eventResponse,
+        },
+    });
+});
+
+const GetTodayEvents = asyncHandler(async (req, res) => {
+    let { page, size, type } = req.query;
+    if (!page || page < 1) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    let query = {};
+
+    if (['mandatory', 'optional'].includes(type)) {
+        query.typeEvent = type;
+    }
+
+    const currentDate = new Date();
+    const start = new Date(currentDate.setHours(0, 0, 0, 0));
+    const end = new Date(currentDate.setHours(23, 59, 59, 999));
+
+    query.startAt = { $gte: start, $lte: end };
+
+    const events = await EventModel.find(query)
+        .select('name startAt endAt eventCode createdAt thumbnail typeEvent post maxAttendees')
+        .populate('attendeesList', 'user')
+        .populate('registeredAttendees', '_id username fullName email')
+        .limit(limit)
+        .skip(skip)
+        .lean();
+
+    const total_documents = await EventModel.countDocuments(query);
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: +page,
+            size: +size,
+            previous: previous_pages,
+            next: next_pages,
+            events,
         },
     });
 });
@@ -962,5 +1006,6 @@ module.exports = {
     GetRegisteredAttendeesList,
     RegisterEvent,
     UnregisterEvent,
-    getPastEvents,
+    GetPastEvents,
+    GetTodayEvents,
 };

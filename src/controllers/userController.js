@@ -57,8 +57,8 @@ const GetUsers = asyncHandler(async (req, res) => {
             key,
             {
                 total: total_documents,
-                page: page,
-                size: size,
+                page: +page,
+                size: +size,
                 previous: previous_pages,
                 next: next_pages,
                 users,
@@ -71,8 +71,8 @@ const GetUsers = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             users,
@@ -261,8 +261,8 @@ const GetUsersByClassId = asyncHandler(async (req, res) => {
             key,
             {
                 total: total_documents,
-                page: page,
-                size: size,
+                page: +page,
+                size: +size,
                 previous: previous_pages,
                 next: next_pages,
                 users,
@@ -275,8 +275,8 @@ const GetUsersByClassId = asyncHandler(async (req, res) => {
         status: 'success',
         data: {
             total: total_documents,
-            page: page,
-            size: size,
+            page: +page,
+            size: +size,
             previous: previous_pages,
             next: next_pages,
             users,

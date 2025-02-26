@@ -11,14 +11,16 @@ const {
     GetRegisteredAttendeesList,
     RegisterEvent,
     UnregisterEvent,
-    getPastEvents,
+    GetPastEvents,
+    GetTodayEvents,
 } = require('../controllers/eventController');
 const checkAuth = require('../middlewares/checkAuthMiddleware');
 const checkRole = require('../middlewares/checkRoleMiddleware');
 const ROLES = require('../constants/roles');
 const Router = express.Router();
 
-Router.get(ROUTES.EVENT.PAST_EVENT, [checkAuth, checkRole([ROLES.ADMIN])], getPastEvents);
+Router.get(ROUTES.EVENT.GET_PAST_EVENT, [checkAuth, checkRole([ROLES.ADMIN])], GetPastEvents);
+Router.get(ROUTES.EVENT.GET_TODAY_EVENTS, [checkAuth, checkRole([ROLES.ADMIN])], GetTodayEvents);
 Router.get(ROUTES.EVENT.GET_ALL, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetEvents);
 Router.get(ROUTES.EVENT.GET_ATTENDEES, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], GetAttendeesList);
 Router.get(ROUTES.EVENT.ID, [checkAuth, checkRole([ROLES.ADMIN, ROLES.USER])], getEventByIdOrCode);

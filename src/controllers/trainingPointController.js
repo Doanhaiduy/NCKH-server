@@ -9,6 +9,7 @@ const ResponseSchema = require('../models/responseModel');
 const { destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloudinary');
 const { handleCache, setCache } = require('../configs/redis');
 const GradingPeriodModel = require('../models/gradingPeriodModel');
+const { default: mongoose } = require('mongoose');
 
 const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
     const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
@@ -186,6 +187,15 @@ const GetAllTrainingPoint = asyncHandle(async (req, res) => {
     });
 });
 
+const getAssessmentTime = async (semesterYearId) => {
+    const gradingPeriod = await GradingPeriodModel.findOne({ semesterYear: semesterYearId }).lean();
+
+    return {
+        AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
+        AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
+    };
+};
+
 //[GET] /api/v1/training-point/:id
 const GetTrainingPointById = asyncHandle(async (req, res) => {
     const { id } = req.params;
@@ -219,13 +229,11 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Training point not found');
     }
     let isLocked = true;
-    const gradingPeriod = await GradingPeriodModel.findOne({
-        semesterYear: trainingPoint.semesterYear._id,
-    }).lean();
+    const { AssessmentStartTime, AssessmentEndTime } = await getAssessmentTime(trainingPoint.semesterYear._id);
 
-    if (gradingPeriod) {
+    if (AssessmentStartTime && AssessmentEndTime) {
         const currentDate = new Date();
-        if (currentDate >= gradingPeriod.startDate && currentDate <= gradingPeriod.endDate) {
+        if (currentDate >= AssessmentStartTime && currentDate <= AssessmentEndTime) {
             isLocked = false;
         }
     }
@@ -235,8 +243,8 @@ const GetTrainingPointById = asyncHandle(async (req, res) => {
         data: {
             ...trainingPoint,
             isLocked,
-            AssessmentStartTime: gradingPeriod ? gradingPeriod.startDate : null,
-            AssessmentEndTime: gradingPeriod ? gradingPeriod.endDate : null,
+            AssessmentStartTime,
+            AssessmentEndTime,
         },
     });
 });
@@ -826,6 +834,7 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
             user: trainingPoint.user.name,
             fullName: trainingPoint.user.fullName,
             sclassName: trainingPoint.user.sclassName.sclassName,
+            idClass: trainingPoint.user.sclassName._id,
             semester: trainingPoint.semesterYear.semester,
             year: trainingPoint.semesterYear.year,
             status: trainingPoint.status,
@@ -845,6 +854,7 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
 
     const groupedResponse = Object.keys(groupedByClass).map((className) => ({
         className,
+        idClass: groupedByClass[className][0].idClass,
         total: groupedByClass[className].length,
         totalAssessment: groupedByClass[className].filter(
             (student) => student.tempScore !== 0 && student.status === 'pending',
@@ -861,6 +871,110 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
         data: groupedResponse,
     });
 });
+
+const getAllUserByClass = async (classId) => {
+    const users = await UserSchema.find({ sclassName: classId }).select('_id').lean();
+    return users.map((user) => user._id.toString());
+};
+
+const GetTrainingPointByClass = asyncHandle(async (req, res) => {
+    let { semester, year, page, size } = req.query;
+    const { classId } = req.params;
+
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const query = {};
+
+    if (semester && year) {
+        const semesterYear = await SemesterYearModel.findOne({ semester, year }).lean();
+
+        if (!semesterYear) {
+            throw new ApiError(StatusCodes.BAD_REQUEST, 'Semester and year not found');
+        }
+        query.semesterYear = semesterYear._id;
+    } else {
+        const currYear = new Date().getFullYear();
+        const currMonth = new Date().getMonth() + 1;
+        let semester = 1;
+        if (currMonth > 6) {
+            semester = 2;
+        }
+        const semesterYear = await SemesterYearModel.findOne({ semester, year: currYear }).lean();
+        query.semesterYear = semesterYear._id;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Class id is invalid');
+    }
+
+    let userIdArr = [];
+
+    if (classId) {
+        userIdArr = await getAllUserByClass(classId);
+    } else {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'classId is required');
+    }
+
+    if (userIdArr.length !== 0) {
+        query.user = { $in: userIdArr };
+    }
+
+    console.log(query);
+
+    const trainingPoints = await TrainingPointSchema.find(query)
+        .select('user tempScore totalScore status')
+        .populate({ path: 'semesterYear', select: '-updatedAt -createdAt' })
+        .populate({
+            path: 'user',
+            select: 'name fullName sclassName username',
+            populate: {
+                path: 'sclassName',
+                select: 'sclassName',
+            },
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const response = trainingPoints.map((trainingPoint) => {
+        return {
+            _id: trainingPoint._id,
+            username: trainingPoint.user.username,
+            fullName: trainingPoint.user.fullName,
+            status: trainingPoint.status,
+            tempScore: trainingPoint.tempScore,
+            totalScore: trainingPoint.totalScore,
+        };
+    });
+
+    const { AssessmentStartTime, AssessmentEndTime } = await getAssessmentTime(query.semesterYear);
+
+    const total_documents = await TrainingPointSchema.countDocuments(query);
+
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
+
+    res.status(StatusCodes.OK).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: +page,
+            size: +size,
+            previous: previous_pages,
+            next: next_pages,
+            sclassName: trainingPoints[0].user.sclassName.sclassName,
+            year: trainingPoints[0].semesterYear.year,
+            semester: trainingPoints[0].semesterYear.semester,
+            AssessmentStartTime,
+            AssessmentEndTime,
+            data: response,
+        },
+    });
+});
+
 module.exports = {
     getIdCriteria,
     CreateTrainingPoint,
@@ -877,4 +991,5 @@ module.exports = {
     GetAllResponse,
     GetAllResponseByTrainingPoint,
     GetOverviewTrainingPointList,
+    GetTrainingPointByClass,
 };
