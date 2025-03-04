@@ -58,7 +58,7 @@ const GetRegisterEventStatistics = asyncHandler(async (req, res) => {
     }
 
     const events = await EventModel.find(query)
-        .select('name location typeEvent registeredAttendees maxAttendees')
+        .select('name location typeEvent registeredAttendees maxAttendees startAt endAt')
         .populate({ path: 'location', select: 'name' })
         .skip(skip)
         .limit(limit)
@@ -78,6 +78,8 @@ const GetRegisterEventStatistics = asyncHandler(async (req, res) => {
             typeEvent: event.typeEvent,
             maxAttendees: event.maxAttendees,
             totalRegisteredAttendees: event.registeredAttendees ? event.registeredAttendees.length : 0,
+            startAt: event.startAt,
+            endAt: event.endAt,
         };
     });
 
@@ -256,7 +258,7 @@ const GetTopStudent = asyncHandler(async (req, res) => {
         query.semesterYear = semesterYear;
     }
 
-    const users = await UserModel.find().select('_id fullName').lean();
+    const users = await UserModel.find().select('_id fullName avatar').lean();
 
     let attendances = await AttendanceModel.find().select('event user').populate('event', 'semesterYear').lean();
     if (semesterYear) {
@@ -271,6 +273,7 @@ const GetTopStudent = asyncHandler(async (req, res) => {
             return {
                 id: user._id,
                 fullName: user.fullName,
+                avatar: user.avatar,
                 totalAttendance: attendance.length,
             };
         })

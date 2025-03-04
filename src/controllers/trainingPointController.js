@@ -796,13 +796,19 @@ const GetAllResponseByTrainingPoint = asyncHandle(async (req, res) => {
 });
 
 const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
-    let { semester, year } = req.query;
+    let { page, size, semester, year } = req.query;
+    if (!page) page = 1;
+    if (!size) size = 10;
+
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
 
     const query = {};
 
     if (!semester) {
         semester = 1;
     }
+
     if (!year) {
         const currYear = new Date().getFullYear();
         year = currYear;
@@ -827,6 +833,8 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
             },
         })
         .populate('semesterYear', 'semester year -_id')
+        .skip(skip)
+        .limit(limit)
         .lean();
 
     const response = trainingPoints.map((trainingPoint) => {
@@ -863,12 +871,29 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
             (student) => student.tempScore === 0 && student.status === 'pending',
         ).length,
         totalApprove: groupedByClass[className].filter((student) => student.status !== 'pending').length,
-        students: groupedByClass[className],
+        // students: groupedByClass[className],
     }));
+
+    const { AssessmentStartTime, AssessmentEndTime } = await getAssessmentTime(query.semesterYear);
+
+    const total_documents = await TrainingPointSchema.countDocuments(query);
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     res.status(StatusCodes.OK).json({
         status: 'success',
-        data: groupedResponse,
+        data: {
+            total: total_documents,
+            page: +page,
+            size: +size,
+            previous: previous_pages,
+            next: next_pages,
+            data: {
+                assessmentStartTime: AssessmentStartTime,
+                assessmentEndTime: AssessmentEndTime,
+                trainingPoints: groupedResponse,
+            },
+        },
     });
 });
 
@@ -968,8 +993,8 @@ const GetTrainingPointByClass = asyncHandle(async (req, res) => {
             sclassName: trainingPoints[0].user.sclassName.sclassName,
             year: trainingPoints[0].semesterYear.year,
             semester: trainingPoints[0].semesterYear.semester,
-            AssessmentStartTime,
-            AssessmentEndTime,
+            assessmentStartTime: AssessmentStartTime,
+            assessmentEndTime: AssessmentEndTime,
             data: response,
         },
     });

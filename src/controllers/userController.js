@@ -11,7 +11,7 @@ const cloudinary = require('../configs/cloudinary');
 
 // [GET] /api/v1/users/get-all
 const GetUsers = asyncHandler(async (req, res) => {
-    let { page, size, search } = req.query;
+    let { page, size, search, role } = req.query;
     if (!page) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -38,14 +38,26 @@ const GetUsers = asyncHandler(async (req, res) => {
         ];
     }
 
+    let roleCode = 'SV';
+
+    if (role && ['SV', 'BCS', 'CBL', 'CV', 'BCHK'].includes(role.toUpperCase())) {
+        roleCode = role.toUpperCase();
+    }
+
     const users = await UserModel.find(query)
         .select('-password -__v')
-        .populate('role', 'name')
+        .populate('role', 'name roleCode')
         .populate('sclassName', 'sclassName _id teacher')
         .sort({ createdAt: -1 })
         .limit(limit)
         .skip(skip)
         .lean();
+
+    const usersFilter = users.filter((user) => {
+        if (roleCode) {
+            return user.role.roleCode === roleCode;
+        }
+    });
 
     const total_documents = await UserModel.countDocuments(query);
 
@@ -75,7 +87,7 @@ const GetUsers = asyncHandler(async (req, res) => {
             size: +size,
             previous: previous_pages,
             next: next_pages,
-            users,
+            users: usersFilter,
         },
     });
 });

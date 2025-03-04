@@ -3,11 +3,38 @@ const asyncHandler = require('express-async-handler');
 
 // [GET] /api/v1/feedbacks
 const GetFeedbacks = asyncHandler(async (req, res) => {
-    const feedbacks = await FeedbackModel.find().sort({ createdAt: -1 }).lean();
+    let { page, size, sortDate } = req.query;
+    if (!page) page = 1;
+    if (!size) size = 10;
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    let sort = {
+        createdAt: -1,
+    };
+
+    if (['asc', 'desc'].includes(sortDate?.toLowerCase())) {
+        sort = {
+            createdAt: sortDate === 'asc' ? 1 : -1,
+        };
+    }
+
+    const feedbacks = await FeedbackModel.find().skip(skip).limit(limit).sort(sort).lean();
+
+    const total_documents = await FeedbackModel.countDocuments();
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
     res.status(200).json({
         status: 'success',
-        data: feedbacks,
+        data: {
+            total: total_documents,
+            page: +page,
+            size: +size,
+            previous: previous_pages,
+            next: next_pages,
+            feedbacks,
+        },
     });
 });
 

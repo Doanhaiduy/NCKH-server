@@ -114,7 +114,9 @@ const GetEvents = asyncHandler(async (req, res) => {
         query.$or = [{ name: { $regex: search, $options: 'i' } }];
     }
 
-    let sort = {};
+    let sort = {
+        startAt: -1,
+    };
 
     if (['asc', 'desc'].includes(sortDate)) {
         sort = { startAt: sortDate === 'asc' ? 1 : -1 };
@@ -523,7 +525,7 @@ const GetAttendeesList = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Event not found');
     }
 
-    const total_documents = event.attendeesList.length;
+    const total_documents = event?.attendeesList?.length || 0;
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 
@@ -585,7 +587,7 @@ const GetRegisteredAttendeesList = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'This event is not optional');
     }
 
-    const total_documents = event.registeredAttendees.length;
+    const total_documents = event?.registeredAttendees ? event.registeredAttendees.length : 0;
     const previous_pages = page - 1;
     const next_pages = Math.ceil((total_documents - skip) / size) - 1;
 

@@ -68,7 +68,7 @@ const PushNotification = asyncHandle(async ({ data, somePushTokens }) => {
 
 // [GET] /api/v1/notifications/get-all
 const GetAllNotifications = asyncHandle(async (req, res) => {
-    let { page, size, time, search } = req.query;
+    let { page, size, search, type, sortDate } = req.query;
     if (!page) page = 1;
     if (!size) size = 10;
     const limit = parseInt(size);
@@ -92,7 +92,23 @@ const GetAllNotifications = asyncHandle(async (req, res) => {
         query.$or = [{ message: { $regex: search, $options: 'i' } }];
     }
 
-    const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).lean();
+    if (
+        ['system', 'reminder', 'news', 'activity', 'other', 'event', 'training-point', 'grading-period'].includes(type)
+    ) {
+        query.type = type;
+    }
+
+    let sort = {
+        createdAt: -1,
+    };
+
+    if (['asc', 'desc'].includes(sortDate?.toLowerCase())) {
+        sort = {
+            createdAt: sortDate === 'asc' ? 1 : -1,
+        };
+    }
+
+    const notifications = await NotificationModel.find(query).skip(skip).limit(limit).sort(sort).lean();
 
     const total_documents = await NotificationModel.countDocuments(query);
 

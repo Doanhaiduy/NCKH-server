@@ -33,6 +33,41 @@ const GetClassById = asyncHandle(async (req, res) => {
     });
 });
 
+const GetAllStudentsByClassId = asyncHandle(async (req, res) => {
+    const classId = req.params.id;
+    let { page, size } = req.query;
+
+    if (!page) page = 1;
+    if (!size) size = 10;
+
+    const limit = parseInt(size);
+    const skip = (page - 1) * size;
+
+    const classDetail = await ClassSchema.findById(classId).lean();
+
+    if (!classDetail) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Class not found');
+    }
+
+    const students = await UserSchema.find({ sclassName: classId }).limit(limit).skip(skip).lean();
+
+    const total_documents = await UserSchema.countDocuments({ sclassName: classId });
+    const previous_pages = page - 1;
+    const next_pages = Math.ceil((total_documents - skip) / size) - 1;
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            total: total_documents,
+            page: +page,
+            size: +size,
+            previous: previous_pages,
+            next: next_pages,
+            students,
+        },
+    });
+});
+
 // [POST] /api/v1/classes/create
 const CreateClass = asyncHandle(async (req, res) => {
     if (!req.body.name) {
@@ -116,6 +151,7 @@ const DeleteClassById = asyncHandle(async (req, res) => {
 module.exports = {
     GetAllClasses,
     GetClassById,
+    GetAllStudentsByClassId,
     UpdateClassById,
     DeleteClassById,
     CreateClass,
