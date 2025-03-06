@@ -10,6 +10,7 @@ const { destroyImageByPublicId, upLoadMultipleImages } = require('../utils/cloud
 const { handleCache, setCache } = require('../configs/redis');
 const GradingPeriodModel = require('../models/gradingPeriodModel');
 const { default: mongoose } = require('mongoose');
+const { getAllUserByClass } = require('../services/userService');
 
 const getIdCriteria = async (criteriaCode, idUser, semesterYearId) => {
     const trainingPoint = await TrainingPointSchema.findOne({ user: idUser, semesterYear: semesterYearId });
@@ -897,11 +898,6 @@ const GetOverviewTrainingPointList = asyncHandle(async (req, res) => {
     });
 });
 
-const getAllUserByClass = async (classId) => {
-    const users = await UserSchema.find({ sclassName: classId }).select('_id').lean();
-    return users.map((user) => user._id.toString());
-};
-
 const GetTrainingPointByClass = asyncHandle(async (req, res) => {
     let { semester, year, page, size } = req.query;
     const { classId } = req.params;
@@ -946,8 +942,6 @@ const GetTrainingPointByClass = asyncHandle(async (req, res) => {
     if (userIdArr.length !== 0) {
         query.user = { $in: userIdArr };
     }
-
-    console.log(query);
 
     const trainingPoints = await TrainingPointSchema.find(query)
         .select('user tempScore totalScore status')
@@ -1017,4 +1011,5 @@ module.exports = {
     GetAllResponseByTrainingPoint,
     GetOverviewTrainingPointList,
     GetTrainingPointByClass,
+    getAssessmentTime,
 };

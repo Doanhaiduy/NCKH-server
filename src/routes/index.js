@@ -14,6 +14,7 @@ const NotificationRouter = require('./notificationRouter');
 const FeedbackRouter = require('./feedbackRouter');
 const UtilsRouter = require('./utilsRouter');
 const StatisticsRouter = require('./statisticsRouter');
+const ExportRouter = require('./exportRouter');
 
 const routerConfig = () => {
     Router.use(ROUTES.AUTH.ROOT, AuthRouter);
@@ -28,6 +29,7 @@ const routerConfig = () => {
     Router.use(ROUTES.FEEDBACK.ROOT, FeedbackRouter);
     Router.use(ROUTES.UTILS.ROOT, UtilsRouter);
     Router.use(ROUTES.STATISTICS.ROOT, StatisticsRouter);
+    Router.use(ROUTES.EXPORT.ROOT, ExportRouter);
     return Router;
 };
 

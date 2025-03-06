@@ -139,7 +139,6 @@ const AdminLogin = asyncHandler(async (req, res) => {
 // [POST] /api/v1/auth/refresh-token
 const RefreshToken = asyncHandler(async (req, res) => {
     const refreshToken = req.headers.token.split(' ')[1];
-    console.log(refreshToken);
     if (!refreshToken) {
         throw new ApiError(StatusCodes.UNAUTHORIZED, 'Refresh token is missing');
     }

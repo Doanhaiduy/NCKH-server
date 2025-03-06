@@ -117,13 +117,25 @@ const ROUTES = Object.freeze({
         DELETE: '/:id',
     },
 
-    // statistics
     STATISTICS: {
         ROOT: '/statistics',
         GET_REGISTERED_EVENTS: '/registered-events',
         GET_ATTENDEES_EVENTS: '/attendees-events',
         GET_OVERVIEW_DASHBOARD: '/overview-dashboard',
         GET_TOP_STUDENTS: '/top-students',
+    },
+
+    EXPORT: {
+        ROOT: '/export',
+        EXPORT_EVENT_DATA: '/event-data/:id',
+        EXPORT_EVENT_LIST: '/event-list',
+        EXPORT_USER_LIST: '/user-list',
+        EXPORT_POST_LIST: '/post-list',
+        EXPORT_FEEDBACK_LIST: '/feedback-list',
+        EXPORT_TRAINING_POINT_LIST: '/training-point-list',
+        EXPORT_TRAINING_POINT_LIST_BY_CLASS: '/training-point-list-by-class/:classId', // add classname in excel tdetails
+        EXPORT_TRAINING_POINT_LIST_BY_USER: '/training-point-list-by-user/:userId',
+        EXPORT_TRAINING_POINT_BY_ID: '/training-point/:id',
     },
 
     UTILS: {

@@ -42,6 +42,7 @@ const decryptData = (encryptedData) => {
         iv,
     };
 };
+
 const getCurrentSemesterYear = () => {
     const date = new Date();
     let semester = 1;
@@ -59,10 +60,22 @@ const getCurrentSemesterYear = () => {
     return { semester, year };
 };
 
+const getStatusAtTimeVN = (start, end) => {
+    const now = new Date();
+    if (now < start) {
+        return 'Chưa bắt đầu';
+    }
+    if (now > end) {
+        return 'Đã kết thúc';
+    }
+    return 'Đang diễn ra';
+};
+
 module.exports = {
     genOTP,
     handleSendMail,
     encryptData,
     decryptData,
     getCurrentSemesterYear,
+    getStatusAtTimeVN,
 };
