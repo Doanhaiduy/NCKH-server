@@ -160,7 +160,8 @@ const RefreshToken = asyncHandler(async (req, res) => {
 
 // [POST] /api/v1/auth/register
 const Register = asyncHandler(async (req, res) => {
-    const hashPassword = await bcrypt.hash(req.body.password, 10);
+    const randomPassword = Math.random().toString(36).slice(-8);
+    const hashPassword = await bcrypt.hash(randomPassword, 10);
     if (!req.body.sclassName) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Class name is required');
     }
@@ -205,7 +206,7 @@ const Register = asyncHandler(async (req, res) => {
     Chúc mừng bạn đã đăng ký thành công tài khoản trên hệ thống NTU-Student. Dưới đây là thông tin tài khoản của bạn:
     
     - **Tên đăng nhập**: ${req.body.username}
-    - **Mật khẩu**: ${req.body.password}
+    - **Mật khẩu**: ${randomPassword}
     
     Vui lòng đăng nhập vào hệ thống và thay đổi mật khẩu ngay sau khi đăng nhập để đảm bảo an toàn cho tài khoản của bạn.
     

@@ -19,7 +19,12 @@ const GetFeedbacks = asyncHandler(async (req, res) => {
         };
     }
 
-    const feedbacks = await FeedbackModel.find().skip(skip).limit(limit).sort(sort).lean();
+    const feedbacks = await FeedbackModel.find()
+        .populate('user', 'username fullName email')
+        .skip(skip)
+        .limit(limit)
+        .sort(sort)
+        .lean();
 
     const total_documents = await FeedbackModel.countDocuments();
     const previous_pages = page - 1;

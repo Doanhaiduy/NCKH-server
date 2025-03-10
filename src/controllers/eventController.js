@@ -15,7 +15,7 @@ const { handleCache, setCache } = require('../configs/redis');
 const { getIdCriteria, updateCriteriaScore } = require('./trainingPointController');
 const { scheduleEventNotifications } = require('../utils/scheduleJob');
 
-const createQRCode = async (data) => {
+const createQRCode = async (data, id) => {
     if (!data) return null;
     try {
         const { encryptedData, iv } = encryptData(data);
@@ -23,7 +23,7 @@ const createQRCode = async (data) => {
         let qrBase64 = await QRCode.toDataURL(
             JSON.stringify({
                 data: encryptedData,
-                message: 'Scan this QR code to check in',
+                message: `ntustudent://attendance/${id}`,
             }),
             {
                 errorCorrectionLevel: 'H',
@@ -321,13 +321,19 @@ const CreateEvent = asyncHandler(async (req, res) => {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Semester year not found');
     }
 
-    const { qrCodeUrl, iv } = await createQRCode({
-        eventCode,
-        startAt: new Date(startAt).getTime(),
-        endAt: new Date(endAt).getTime(),
-    });
+    const randomObjectId = mongoose.Types.ObjectId();
+
+    const { qrCodeUrl, iv } = await createQRCode(
+        {
+            eventCode,
+            startAt: new Date(startAt).getTime(),
+            endAt: new Date(endAt).getTime(),
+        },
+        randomObjectId,
+    );
 
     const event = new EventModel({
+        _id: randomObjectId,
         eventCode,
         name,
         description,

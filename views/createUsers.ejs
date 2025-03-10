@@ -33,12 +33,26 @@
             const studentRows = document.getElementById('studentsData').value.trim().split("\n");
             const students = studentRows.map(row => {
                 const [username, fullName, email, className] = row.split(",").map(s => s.trim());
-                return { username, fullName, email, password: email, sclassName: className, avatar: "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/837af364-85e1-44d4-9cbd-380cde9b4426/dc7ptsa-6f96c8d9-aa2e-4d2f-8eb6-819897720a5f.jpg/v1/fill/w_900,h_900,q_75,strp/doraemon_ultra_instinct_by_eddhortillosa_dc7ptsa-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTAwIiwicGF0aCI6IlwvZlwvODM3YWYzNjQtODVlMS00NGQ0LTljYmQtMzgwY2RlOWI0NDI2XC9kYzdwdHNhLTZmOTZjOGQ5LWFhMmUtNGQyZi04ZWI2LTgxOTg5NzcyMGE1Zi5qcGciLCJ3aWR0aCI6Ijw9OTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.XW7K67CSgMbZ3e6GnftEP7LIye05Vn8lJ78jecYVJ4U", role: "SV" };
+                return {
+                    username,
+                    fullName,
+                    email,
+                    sclassName: className,
+                    avatar: "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/837af364-85e1-44d4-9cbd-380cde9b4426/dc7ptsa-6f96c8d9-aa2e-4d2f-8eb6-819897720a5f.jpg/v1/fill/w_900,h_900,q_75,strp/doraemon_ultra_instinct_by_eddhortillosa_dc7ptsa-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTAwIiwicGF0aCI6IlwvZlwvODM3YWYzNjQtODVlMS00NGQ0LTljYmQtMzgwY2RlOWI0NDI2XC9kYzdwdHNhLTZmOTZjOGQ5LWFhMmUtNGQyZi04ZWI2LTgxOTg5NzcyMGE1Zi5qcGciLCJ3aWR0aCI6Ijw9OTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.XW7K67CSgMbZ3e6GnftEP7LIye05Vn8lJ78jecYVJ4U",
+                    role: "SV"
+                };
             });
 
             try {
                 const Base_URL = document.location.origin;
                 const token = "<%= accessToken %>";
+                const totalStudents = students.length;
+                let progressCounter = 0;
+                const progressElement = document.createElement('div');
+                progressElement.id = 'bulkCreateProgress';
+                progressElement.innerHTML = `<p>Processing: 0/${totalStudents} students</p>`;
+                document.getElementById('bulkCreateForm').after(progressElement);
+
                 for (const student of students) {
                     const registerResponse = await fetch(`${Base_URL}/api/v1/auth/register`, {
                         method: 'POST',
@@ -47,7 +61,8 @@
                     });
 
                     if (!registerResponse.ok) {
-                        throw new Error(`Failed to create ${student.username}`);
+                        const errorData = await registerResponse.json();
+                        throw new Error(`Failed to create ${student.username}: ${errorData.message || 'Unknown error'}`);
                     }
 
                     const userData = await registerResponse.json();
@@ -57,23 +72,44 @@
                     const startingYear = 2021 + (firstTwoDigits - 63);
                     const years = Array.from({ length: 5 }, (_, i) => startingYear + i);
 
+                    const trainingPointPromises = [];
+
                     for (const year of years) {
                         for (let semester = 1; semester <= 2; semester++) {
-                            await fetch(`${Base_URL}/api/v1/training-points`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                },
-                                body: JSON.stringify({ userId, semester, year })
-                            });
+                            trainingPointPromises.push(
+                                fetch(`${Base_URL}/api/v1/training-points`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ userId, semester, year })
+                                }).then(response => {
+                                    if (!response.ok) {
+                                        throw new Error(`Failed to create training point for ${student.username}, year ${year}, semester ${semester}`);
+                                    }
+                                    return response.json();
+                                })
+                            );
                         }
                     }
+
+                    await Promise.all(trainingPointPromises);
+
+                    progressCounter++;
+                    document.getElementById('bulkCreateProgress').innerHTML =
+                        `<p>Processing: ${progressCounter}/${totalStudents} students</p>`;
                 }
+
+                document.getElementById('bulkCreateProgress').remove();
 
                 alert("All students have been created successfully!");
                 document.getElementById('bulkCreateForm').reset();
             } catch (error) {
+                if (document.getElementById('bulkCreateProgress')) {
+                    document.getElementById('bulkCreateProgress').remove();
+                }
+
                 console.error(error);
                 alert("Error: " + error.message);
             }

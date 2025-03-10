@@ -52,7 +52,6 @@
 
     <script>
 
-
         document.getElementById('createStudentForm').addEventListener('submit', async function (event) {
             event.preventDefault();
 
@@ -61,7 +60,6 @@
                 username: document.getElementById('username').value,
                 fullName: document.getElementById('fullName').value,
                 email: document.getElementById('email').value,
-                password: document.getElementById('email').value,
                 sclassName: document.getElementById('className').value,
                 avatar: "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/837af364-85e1-44d4-9cbd-380cde9b4426/dc7ptsa-6f96c8d9-aa2e-4d2f-8eb6-819897720a5f.jpg/v1/fill/w_900,h_900,q_75,strp/doraemon_ultra_instinct_by_eddhortillosa_dc7ptsa-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7ImhlaWdodCI6Ijw9OTAwIiwicGF0aCI6IlwvZlwvODM3YWYzNjQtODVlMS00NGQ0LTljYmQtMzgwY2RlOWI0NDI2XC9kYzdwdHNhLTZmOTZjOGQ5LWFhMmUtNGQyZi04ZWI2LTgxOTg5NzcyMGE1Zi5qcGciLCJ3aWR0aCI6Ijw9OTAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLm9wZXJhdGlvbnMiXX0.XW7K67CSgMbZ3e6GnftEP7LIye05Vn8lJ78jecYVJ4U",
                 role: "SV"
@@ -69,6 +67,9 @@
             const Base_URL = document.location.origin;
 
             try {
+                // Hiển thị loader hoặc thông báo đang xử lý (tùy chọn)
+                // showLoader();
+
                 // Bước 1: Tạo user
                 const registerResponse = await fetch(`${Base_URL}/api/v1/auth/register`, {
                     method: 'POST',
@@ -89,12 +90,13 @@
                 const startingYear = 2021 + (firstTwoDigits - 63); // Tính năm bắt đầu
                 const years = Array.from({ length: 5 }, (_, i) => startingYear + i); // Tạo 5 năm
 
-                // Gửi request tạo training points
                 const token = "<%= accessToken %>";
+                const trainingPointPromises = [];
+
                 for (const year of years) {
                     for (let semester = 1; semester <= 2; semester++) {
-                        await fetch(`${Base_URL}/api/v1/training-points`
-                            , {
+                        trainingPointPromises.push(
+                            fetch(`${Base_URL}/api/v1/training-points`, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -105,9 +107,16 @@
                                     semester: semester,
                                     year: year
                                 })
-                            });
+                            }).then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`Failed to create training point for year ${year}, semester ${semester}`);
+                                }
+                                return response.json();
+                            })
+                        );
                     }
                 }
+                await Promise.all(trainingPointPromises);
 
                 alert("Tạo tài khoản và bảng điểm thành công!");
                 // reset form
